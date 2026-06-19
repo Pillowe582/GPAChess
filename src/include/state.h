@@ -4,6 +4,7 @@
 #include <QString>
 #include <QStringList>
 #include <vector>
+#include <atomic>
 
 // 状态机阶段枚举
 enum class RoundPhase
@@ -15,8 +16,10 @@ enum class RoundPhase
     Finish      // 5. 结束阶段
 };
 
-struct Attribute
+// 统一的属性容器（用于运行时计算）
+class Attribute
 {
+public:
     int base = 0;              // 白值
     int flatBonus = 0;         // 小加成
     float percentBonus = 0.0f; // 百分比加成
@@ -28,241 +31,247 @@ struct Attribute
     }
 };
 
-// 静态配置：角色的初始图鉴数值
-struct ChessConfig
+inline void applyDamageToUnit(int rawDamage, const Attribute &def, int &currentHp, bool &isAlive)
 {
-    int configId; // 种类ID
-    QString name; // 名字
-    int cost;     // 几费
+    if (!isAlive)
+        return;
 
-    // 1星基础三维属性
-    int baseHp;
-    int baseAtk;
-    int baseDef;
+    int finalDef = def.getFinal();
+    int actualDamage = rawDamage * 100 / (100 + finalDef);
+    if (actualDamage < 1)
+        actualDamage = 1;
 
-    // 属性成长的倍率系数
-    float hpGrowthMultiplier;
-    float atkGrowthMultiplier;
+    currentHp -= actualDamage;
+    if (currentHp <= 0)
+    {
+        currentHp = 0;
+        isAlive = false;
+    }
+}
 
-    int attackRange;       // 攻击距离
-    float baseAttackSpeed; // 基础攻速
-    int maxMp;             // 满蓝条上限
-    double speed;          // 移动速度
-
-    QStringList bonds;   // 拥有的初始羁绊标签
-    QString description; // 技能或角色描述
-};
-
-// 运行时角色实例：战场上每一个真实存在的棋子
-class ChessInstance
+// 基础图鉴配置：包含双方（棋子/敌人）共有的基础数值
+class BaseConfig
 {
 public:
-    // ==========================================
-    // 1. 实例元数据
-    // ==========================================
-    int uuid;                 // 局内自增id
-    const ChessConfig *config; // 指向对应静态配置图鉴
+    int configId = 0; // 种类ID
+    QString name;     // 名字
 
-    // ==========================================
-    // 2. 动态生成的复合战斗属性
-    // ==========================================
-    int starLevel = 1;     // 当前星级（1星、2星、3星）
+    // 1星基础三维属性
+    int baseHp = 0;
+    int baseAtk = 0;
+    int baseDef = 0;
+
+    // 属性成长的倍率系数
+    float hpGrowthMultiplier = 1.0f;
+    float atkGrowthMultiplier = 1.0f;
+
+    int attackRange = 1;       // 攻击距离
+    float baseAttackSpeed = 1; // 基础攻速
+    int maxMp = 0;             // 满蓝条上限
+    double speed = 1.0;        // 移动速度
+
+    QString description;
+};
+
+// 静态配置：玩家棋子静态图鉴
+class ChessConfig : public BaseConfig
+{
+public:
+    int cost = 1;      // 几费
+    QStringList bonds; // 羁绊标签
+};
+
+// 静态配置：敌人图鉴
+class EnemyConfig : public BaseConfig
+{
+public:
+    int baseGoldReward = 0;           // 击杀奖励金币
+    int baseExpReward = 0;            // 击杀奖励经验
+    bool isRequiredByDefault = false; // 是否为必修单位
+};
+
+// 运行时角色实例：继承对应的静态配置，实例化后拥有静态数值与动态状态
+class ChessInstance : public ChessConfig
+{
+public:
+    // Constructor with explicit UUID
+    explicit ChessInstance(int uId, const ChessConfig &staticConfig)
+        : ChessConfig(staticConfig), uuid(uId)
+    {
+        calculateBaseStatsByStar();
+        resetStatus();
+    }
+
+    // Constructor that auto-assigns a unique UUID
+    explicit ChessInstance(const ChessConfig &staticConfig)
+        : ChessConfig(staticConfig)
+    {
+        static std::atomic<int> s_counter{1}; // 定义一个静态原子计数器，用于生成唯一的UUID
+        uuid = s_counter.fetch_add(1);        // 每次构造时递增计数器并返回旧值作为UUID
+        calculateBaseStatsByStar();
+        resetStatus();
+    }
+
+    // 实例元数据
+    int uuid = 0; // 局内自增id
+
+    // 运行时数值
+    int starLevel = 1;     // 当前星级
     Attribute hp;          // 最终生命值属性
     Attribute atk;         // 最终攻击力属性
     Attribute def;         // 最终防御力属性
     Attribute attackSpeed; // 最终攻击速度
 
-    // ==========================================
-    // 3. 局内对战实时状态
-    // ==========================================
+    // 局内实时状态
     int currentHp = 0;   // 当前实时剩余血量
     int currentMp = 0;   // 当前实时能量/蓝量
     bool isAlive = true; // 当前是否存活
 
-    // ==========================================
-    // 4. 位置与空间状态
-    // ==========================================
-    double posX = 0;
-    double posY = 0;
+    // 部署与备战状态
+    bool deployed = false; // true=在战场上, false=在备战席
+    int benchSlot = -1;    // 备战席槽位索引 0~10, 仅在 !deployed 时有效; -1 表示未分配
 
-    // 战斗 AI 专用目标锁
+    // 位置与 AI 状态
+    double posX = 0;        // 战场上的 X 坐标 (仅在 deployed 时有效)
+    double posY = 0;        // 战场上的 Y 坐标 (仅在 deployed 时有效)
     int targetEnemyId = -1; // 当前索敌的UUID，-1表示没有目标
 
-public:
-    // 构造函数：必须传入一个静态配置来孵化这个实例
-    explicit ChessInstance(int uId, const ChessConfig *staticConfig)
-        : uuid(uId), config(staticConfig)
-    {
-        calculateBaseStatsByStar(); // 依据星级计算出最初的 base 属性
-        resetStatus();              // 将实时血量蓝量充满
-    }
-
-    // 核心函数：根据当前星级，自动刷新三维 base 值
     void calculateBaseStatsByStar()
     {
-        if (starLevel >= 1)
+        if (starLevel > 1)
         {
-            hp.base = config->baseHp;
-            atk.base = config->baseAtk;
-            def.base = config->baseDef;
+            hp.base = baseHp;
+            atk.base = baseAtk;
+            def.base = baseDef;
 
-            // 根据星级成长系数计算属性
             for (int i = 1; i < starLevel; ++i)
             {
-                hp.base = static_cast<int>(hp.base * config->hpGrowthMultiplier);
-                atk.base = static_cast<int>(atk.base * config->atkGrowthMultiplier);
-                // 防御力暂且不随星级成长
+                hp.base = static_cast<int>(hp.base * hpGrowthMultiplier);
+                atk.base = static_cast<int>(atk.base * atkGrowthMultiplier);
             }
         }
         else
         {
-            // 使用图鉴的基础属性
-            hp.base = config->baseHp;
-            atk.base = config->baseAtk;
-            def.base = config->baseDef;
+            hp.base = baseHp;
+            atk.base = baseAtk;
+            def.base = baseDef;
         }
-        attackSpeed.base = config->baseAttackSpeed;
+        attackSpeed.base = static_cast<int>(baseAttackSpeed);
     }
 
-    // 回合重置：将状态恢复到备战状态
-    void resetStatus()
+    void resetStatus() // 用于每轮开始时重置棋子状态
     {
-        currentHp = hp.getFinal(); // 满血
-        currentMp = 0;             // 空蓝
+        currentHp = hp.getFinal();
+        currentMp = 0;
         isAlive = true;
-        targetEnemyId = -1; // 取消索敌
+        targetEnemyId = -1;
     }
 
-    // 局内受伤逻辑
     void takeDamage(int rawDamage)
     {
-        if (!isAlive)
-            return;
-
-        // 减伤公式：实际伤害 = 原始伤害 * (100 / (100 + 当前最终防御力))
-        int finalDef = def.getFinal();
-        int actualDamage = rawDamage * 100 / (100 + finalDef);
-        if (actualDamage < 1)
-            actualDamage = 1; // 强制保底造成 1 点伤害
-
-        currentHp -= actualDamage;
-        if (currentHp <= 0)
-        {
-            currentHp = 0;
-            isAlive = false;
-        }
+        applyDamageToUnit(rawDamage, def, currentHp, isAlive);
     }
 };
 
-// 静态配置：角色的初始图鉴数值
-struct EnemyConfig
-{
-    int configId; // 种类ID
-    QString name; // 名字
-
-    // 基础1星三维属性
-    int baseHp;
-    int baseAtk;
-    int baseDef;
-
-    // 属性成长的倍率系数
-    float hpGrowthMultiplier;
-    float atkGrowthMultiplier;
-
-    int attackRange;       // 攻击距离
-    float baseAttackSpeed; // 基础攻速
-    double speed;          // 移动速度
-    int maxMp;             // 满蓝条上限
-
-    int baseGoldReward; // 击杀奖励金币
-    int baseExpReward;  // 击杀奖励经验
-
-    QString description; // 技能或角色描述
-};
-
-class EnemyInstance
+// 运行时敌人实例
+class EnemyInstance : public EnemyConfig
 {
 public:
-    // ==========================================
-    // 1. 实例元数据（绑定静态图鉴）
-    // ==========================================
-    int uuid;                  // 自增生成uuid
-    const EnemyConfig *config; // 指向对应的静态配置图鉴
-
-    // ==========================================
-    // 2. 核心战斗属性
-    // ==========================================
-    Attribute hp;          // 当前波次成长后的最大生命值
-    Attribute atk;         // 当前波次成长后的攻击力
-    Attribute def;         // 当前波次成长后的防御力
-    Attribute attackSpeed; // 实时攻击速度
-
-    // ==========================================
-    // 3. 局内对战实时状态
-    // ==========================================
-    int currentHp = 0;   // 实时剩余血量
-    bool isAlive = true; // 是否存活
-
-    // ==========================================
-    // 4. 核心机制字段
-    // ==========================================
-    bool isRequired;     //  true 为必修单位，false 为选修单位
-    int currentTargetId; // 当前锁定的我方角色唯一ID，若为 -1 且是必修单位，则转为攻击“塔”
-
-    // ==========================================
-    // 5. 位置
-    // ==========================================
-    double posX = 0; // 战场网格 X
-    double posY = 0; // 战场网格 Y
-
-public:
-    // 构造函数：生成敌人时，需要传入全局波次，以便让怪物属性随回合数动态成长
-    EnemyInstance(int uId, const EnemyConfig *staticConfig, bool isRequired, int currentRound)
-        : uuid(uId), config(staticConfig), isRequired(isRequired)
+    EnemyInstance(int uId, const EnemyConfig &staticConfig, bool isRequired, int currentRound)
+        : EnemyConfig(staticConfig), uuid(uId), isRequired(isRequired)
     {
-        // 数值动态成长公式
-        hp.base = config->baseHp;
+        hp.base = baseHp;
         hp.percentBonus = (currentRound - 1) * 0.15f;
 
-        atk.base = config->baseAtk;
+        atk.base = baseAtk;
         atk.percentBonus = (currentRound - 1) * 0.10f;
 
-        def.base = config->baseDef;
-        attackSpeed.base = config->baseAttackSpeed;
+        def.base = baseDef;
+        attackSpeed.base = static_cast<int>(baseAttackSpeed);
 
-        // 充满状态
         currentHp = hp.getFinal();
         isAlive = true;
         currentTargetId = -1;
     }
 
-    // 受伤逻辑（同我方一致）
+    int uuid = 0;
+    Attribute hp;
+    Attribute atk;
+    Attribute def;
+    Attribute attackSpeed;
+
+    int currentHp = 0;
+    bool isAlive = true;
+
+    bool isRequired = false;
+    int currentTargetId = -1;
+
+    double posX = 0;
+    double posY = 0;
+
     void takeDamage(int rawDamage)
     {
-        if (!isAlive)
-            return;
-
-        int finalDef = def.getFinal();
-        int actualDamage = rawDamage * 100 / (100 + finalDef);
-        if (actualDamage < 1)
-            actualDamage = 1;
-
-        currentHp -= actualDamage;
-        if (currentHp <= 0)
-        {
-            currentHp = 0;
-            isAlive = false;
-        }
+        applyDamageToUnit(rawDamage, def, currentHp, isAlive);
     }
 };
+
 // 玩家全局对局数据
-struct PlayerAssets
+class PlayerAssets
 {
-    int gold;
-    int exp;
-    int totalCredit;                         // 累计已修学分
-    int totalGradePoint;                     // 累计学分绩
+public:
+    static constexpr int maxBattlefield = 5; // 战场上最多可部署单位数
+    static constexpr int maxBench = 11;      // 备战席最多可容纳单位数
+
+    int gold = 0;
+    int exp = 0;
+    int totalCredit = 0;                     // 累计已修学分
+    int totalGradePoint = 0;                 // 累计学分绩
     std::vector<ChessInstance> ownedChesses; // 玩家拥有的所有棋子
+
+    // ---- 容量查询 ----
+    int deployedCount() const
+    {
+        int n = 0;
+        for (const auto &c : ownedChesses)
+            if (c.deployed)
+                ++n;
+        return n;
+    }
+    int benchCount() const
+    {
+        int n = 0;
+        for (const auto &c : ownedChesses)
+            if (!c.deployed)
+                ++n;
+        return n;
+    }
+    bool battlefieldFull() const { return deployedCount() >= maxBattlefield; }
+    bool benchFull() const { return benchCount() >= maxBench; }
+
+    // ---- 备战席槽位压缩（移除空槽、重新编号） ----
+    void compactBenchSlots()
+    {
+        int nextSlot = 0;
+        for (auto &c : ownedChesses)
+        {
+            if (!c.deployed)
+                c.benchSlot = nextSlot++;
+        }
+    }
+
+    // ---- 查找第一个空备战槽位 ----
+    int firstEmptyBenchSlot() const
+    {
+        // brute-force: benchmark the occupied slots
+        bool occupied[maxBench] = {};
+        for (const auto &c : ownedChesses)
+            if (!c.deployed && c.benchSlot >= 0 && c.benchSlot < maxBench)
+                occupied[c.benchSlot] = true;
+        for (int i = 0; i < maxBench; ++i)
+            if (!occupied[i])
+                return i;
+        return -1; // 备战席已满
+    }
 };
 
 #endif
