@@ -2,7 +2,6 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QElapsedTimer>
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -19,9 +18,17 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+    enum Scene : int
+    {
+        EntryLogo = 0,
+        EntryMenu = 1,
+        MainGame = 2,
+    };
+    int switchScene(Scene scene);
+
 private:
-    QElapsedTimer timer;
     Ui::MainWindow *ui;
+    void initUi();
 };
 
 #endif
