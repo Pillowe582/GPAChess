@@ -14,9 +14,9 @@ class UnitGraphicsItem : public QGraphicsObject
 public:
     explicit UnitGraphicsItem(int unitUuid, QGraphicsItem *parent = nullptr);
 
-    /// 更新视觉外观（HP、名字、颜色、大小）
+    /// 更新视觉外观（HP、名字、颜色、大小、星级）
     void updateVisual(const QString &name, int currentHp, int maxHp,
-                      const QColor &fillColor, double radius);
+                      const QColor &fillColor, double radius, int starLevel);
 
     /// 设置是否可拖拽（准备阶段 = true，其他阶段 = false）
     void setDraggable(bool enabled);
@@ -47,6 +47,7 @@ private:
     int m_currentHp = 0;
     int m_maxHp = 0;
     double m_radius = 30.0;
+    int m_starLevel = 1;
 };
 
 #endif // UNITGRAPHICSITEM_H

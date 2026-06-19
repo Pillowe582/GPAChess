@@ -10,6 +10,8 @@
 class QGraphicsScene;
 class GameManager;
 class UnitGraphicsItem;
+class ShopWindow;
+class DatabaseManager;
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -37,6 +39,8 @@ public:
 private slots:
     /// 单位拖拽结束后的处理
     void onUnitDragFinished(int uuid, QPointF scenePos);
+    /// 打开商店
+    void onShopOpenClicked();
 
 private:
     Ui::MainWindow *ui;
@@ -50,6 +54,7 @@ private:
     // 合法性判定
     bool isInBattlefieldLegalZone(QPointF scenePos) const;
     bool isInBenchZone(QPointF scenePos) const;
+    bool isInSellZone(QPointF scenePos) const;
     int nearestBenchSlot(QPointF scenePos) const;
 
     // 常量
@@ -66,7 +71,9 @@ private:
     // 管理
     GameManager *m_gameManager = nullptr;
     QGraphicsScene *m_battleScene = nullptr;
-    QMap<int, UnitGraphicsItem *> m_unitItems; // uuid → 图形项
+    QMap<int, UnitGraphicsItem *> m_unitItems;
+    ShopWindow *m_shopWindow = nullptr;
+    DatabaseManager *m_database = nullptr;
 };
 
 #endif

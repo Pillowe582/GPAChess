@@ -4,6 +4,8 @@
 #include "logo_player.h"
 #include "game_manager.h"
 #include "unit_graphics_item.h"
+#include "database_manager.h"
+#include "shop_window.h"
 
 #include <QBrush>
 #include <QCoreApplication>
@@ -52,6 +54,8 @@ MainWindow::MainWindow(QWidget *parent)
         if (!m_gameManager)
         {
             m_gameManager = new GameManager(this);
+            if (!m_database)
+                m_database = new DatabaseManager(this);
             // 伤害跳字（带缩放动画：4x→1x 0.3s ease-out → 保持0.5s → 消失，居中缩放）
             connect(m_gameManager, &GameManager::floatingText, this,
                     [this](const QString &text, double x, double y, int r, int g, int b) {
@@ -66,6 +70,15 @@ MainWindow::MainWindow(QWidget *parent)
                         ft->setZValue(500);
                         ft->setScale(4.0);
 
+                        // 阴影文字（偏移1px，黑色）
+                        auto *shadow = m_battleScene->addSimpleText(text);
+                        shadow->setFont(ftFont);
+                        shadow->setBrush(QColor(0, 0, 0, 160));
+                        shadow->setPos(ft->pos() + QPointF(1, 1));
+                        shadow->setTransformOriginPoint(shadow->boundingRect().center());
+                        shadow->setZValue(499);
+                        shadow->setScale(4.0);
+
                         // 缩放动画：4.0 → 1.0，0.3秒，ease-out
                         auto *anim = new QVariantAnimation(this);
                         anim->setDuration(300);
@@ -73,19 +86,26 @@ MainWindow::MainWindow(QWidget *parent)
                         anim->setEndValue(1.0);
                         anim->setEasingCurve(QEasingCurve::OutCubic);
                         connect(anim, &QVariantAnimation::valueChanged, this,
-                                [ft](const QVariant &val) { ft->setScale(val.toDouble()); });
+                                [ft, shadow](const QVariant &val) {
+                                    double s = val.toDouble();
+                                    ft->setScale(s);
+                                    shadow->setScale(s);
+                                });
                         connect(anim, &QVariantAnimation::finished, anim, &QObject::deleteLater);
                         anim->start(QAbstractAnimation::DeleteWhenStopped);
 
                         // 0.8 秒后删除
-                        QTimer::singleShot(800, this, [ft]() {
+                        QTimer::singleShot(800, this, [ft, shadow]() {
                             if (ft->scene()) ft->scene()->removeItem(ft);
+                            if (shadow->scene()) shadow->scene()->removeItem(shadow);
                             delete ft;
+                            delete shadow;
                         });
                     });
             connect(m_gameManager, &GameManager::phaseChanged, this, [this](RoundPhase p) {
                 print(QString("Phase changed: %1").arg(static_cast<int>(p)));
                 ui->startRoundButton->setEnabled(p == RoundPhase::Prepare);
+                ui->openShopButton->setEnabled(p == RoundPhase::Prepare);
                 refreshSceneLabels();
                 refreshAllUnits();
             });
@@ -135,6 +155,8 @@ MainWindow::MainWindow(QWidget *parent)
                 refreshBattleGround();
                 refreshAllUnits();
             });
+
+            connect(ui->openShopButton, &QPushButton::clicked, this, &MainWindow::onShopOpenClicked);
         }
 
         m_gameManager->initialize();
@@ -282,6 +304,24 @@ void MainWindow::setupMergedScene()
             QBrush(QColor(50, 50, 50, 120)));
         slot->setZValue(1);
     }
+
+    // ----- 出售区（红色方块，备战席右侧） -----
+    const double sellSize = 80.0;
+    const double sellX = kBenchSlotStartX + PlayerAssets::maxBench * kBenchSlotWidth + 20.0;
+    const double sellY = kBenchSlotStartY + (kBenchSlotHeight - sellSize) / 2.0;
+    auto *sellZone = m_battleScene->addRect(
+        QRectF(sellX, sellY, sellSize, sellSize),
+        QPen(QColor(255, 80, 80), 3.0),
+        QBrush(QColor(200, 40, 40, 180)));
+    sellZone->setZValue(1);
+    auto *sellLabel = m_battleScene->addSimpleText(QStringLiteral("出售"));
+    sellLabel->setBrush(Qt::white);
+    QFont sellFont("Microsoft YaHei", 12);
+    sellFont.setBold(true);
+    sellLabel->setFont(sellFont);
+    sellLabel->setPos(sellX + sellSize / 2.0 - sellLabel->boundingRect().width() / 2.0,
+                      sellY + sellSize / 2.0 - sellLabel->boundingRect().height() / 2.0);
+    sellLabel->setZValue(2);
 }
 
 // ============================================================================
@@ -320,10 +360,10 @@ void MainWindow::refreshBattleGround()
         body->setData(0, -1);
         body->setZValue(10);
 
-        const double barWidth = radius * 2.2;
-        const double barHeight = 10.0;
+        const double barWidth = radius * 3.0;
+        const double barHeight = 8.0;
         const double barX = x - barWidth / 2.0;
-        const double barY = y - radius - 18.0;
+        const double barY = y - radius - 24.0;
         auto *barBack = m_battleScene->addRect(QRectF(barX, barY, barWidth, barHeight),
                                                QPen(Qt::NoPen), QBrush(QColor(40, 40, 40, 220)));
         barBack->setData(0, -1);
@@ -334,16 +374,23 @@ void MainWindow::refreshBattleGround()
                                    ? std::clamp(static_cast<double>(enemy.currentHp) / static_cast<double>(maxHp), 0.0, 1.0)
                                    : 0.0;
         auto *barFront = m_battleScene->addRect(QRectF(barX, barY, barWidth * hpRatio, barHeight),
-                                                QPen(Qt::NoPen), QBrush(QColor(70, 220, 90)));
+                                                QPen(Qt::NoPen), QBrush(QColor(220, 60, 60)));
         barFront->setData(0, -1);
         barFront->setZValue(21);
+
+        auto *textShadow = m_battleScene->addSimpleText(
+            QString("%1\n%2/%3").arg(enemy.name).arg(enemy.currentHp).arg(maxHp));
+        textShadow->setBrush(QColor(0, 0, 0, 160));
+        textShadow->setData(0, -1);
+        textShadow->setZValue(29);
+        textShadow->setPos(x - textShadow->boundingRect().width() / 2.0 + 1.0,
+                           barY + barHeight + 3.0);
 
         auto *text = m_battleScene->addSimpleText(
             QString("%1\n%2/%3").arg(enemy.name).arg(enemy.currentHp).arg(maxHp));
         text->setBrush(Qt::white);
         text->setData(0, -1);
         text->setZValue(30);
-        // 放在血条下方、身体上方
         text->setPos(x - text->boundingRect().width() / 2.0, barY + barHeight + 2.0);
     }
 }
@@ -400,7 +447,7 @@ void MainWindow::refreshAllUnits()
         item->setVisible(unit.isAlive);
         item->setPos(targetPos);
         item->setDraggable(isPrepare);
-        item->updateVisual(unit.name, unit.currentHp, unit.hp.getFinal(), color, radius);
+        item->updateVisual(unit.name, unit.currentHp, unit.hp.getFinal(), color, radius, unit.starLevel);
     }
 
     // 清理已不存在的单位图形项
@@ -436,6 +483,15 @@ bool MainWindow::isInBenchZone(QPointF scenePos) const
     const double y = scenePos.y();
     return y > static_cast<double>(kBattlefieldHeight) &&
            y < static_cast<double>(kBattlefieldHeight + kBenchAreaHeight);
+}
+
+bool MainWindow::isInSellZone(QPointF scenePos) const
+{
+    const double sellX = kBenchSlotStartX + PlayerAssets::maxBench * kBenchSlotWidth + 20.0;
+    const double sellY = kBenchSlotStartY + (kBenchSlotHeight - 80.0) / 2.0;
+    const double sellSize = 80.0;
+    return scenePos.x() >= sellX && scenePos.x() <= sellX + sellSize &&
+           scenePos.y() >= sellY && scenePos.y() <= sellY + sellSize;
 }
 
 int MainWindow::nearestBenchSlot(QPointF scenePos) const
@@ -502,6 +558,15 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
 
     const bool wasDeployed = unit->deployed;
     const int oldBenchSlot = unit->benchSlot;
+
+    // ---- S: 出售（拖到红色方块） ----
+    if (isInSellZone(scenePos))
+    {
+        m_gameManager->sellUnit(uuid);
+        refreshAllUnits();
+        refreshSceneLabels();
+        return;
+    }
 
     bool changed = false;
 
@@ -617,6 +682,30 @@ void MainWindow::refreshSceneLabels()
     }
     if (auto *gpa = findChild<QLabel *>("gpa"))
         gpa->setText(QString("塔血：%1").arg(m_gameManager->getTowerHp()));
+}
+
+// ============================================================================
+// 商店
+// ============================================================================
+
+void MainWindow::onShopOpenClicked()
+{
+    if (!m_gameManager || !m_database)
+        return;
+    if (m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
+        return;
+
+    if (!m_shopWindow)
+    {
+        m_shopWindow = new ShopWindow(m_database, m_gameManager, this);
+        connect(m_shopWindow, &ShopWindow::shopClosed, this, [this]()
+                {
+            m_gameManager->checkAndMergeStars();
+            refreshAllUnits();
+            refreshSceneLabels(); });
+    }
+    m_shopWindow->refreshShop();
+    m_shopWindow->show();
 }
 
 // ============================================================================

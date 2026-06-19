@@ -49,7 +49,7 @@
          </font>
         </property>
         <property name="text">
-         <string>刷新</string>
+         <string>￥4 刷新</string>
         </property>
        </widget>
       </item>
@@ -81,7 +81,7 @@
          <widget class="QListView" name="shopChessList"/>
         </item>
         <item>
-         <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,0">
+         <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0,0,0,0,0,0">
           <property name="sizeConstraint">
            <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
           </property>
@@ -177,6 +177,13 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="purchaseButton">
+            <property name="text">
+             <string>购买</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>

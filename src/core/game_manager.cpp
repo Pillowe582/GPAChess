@@ -5,7 +5,9 @@
 #include <QRandomGenerator>
 
 GameManager::GameManager(QObject *parent)
-    : QObject(parent), m_tickTimer(new QTimer(this)), m_tickIntervalMs(50), m_roundNumber(1), m_phase(RoundPhase::Prepare), m_towerHp(100), m_timeAccumulator(0.0)
+    : QObject(parent), m_tickTimer(new QTimer(this)), m_tickIntervalMs(50),
+      m_roundNumber(1), m_phase(RoundPhase::Prepare), m_towerHp(100),
+      m_timeAccumulator(0.0), m_gameSeed(12345), m_rng(12345)
 {
     m_tickTimer->setInterval(m_tickIntervalMs);
     connect(m_tickTimer, &QTimer::timeout, this, &GameManager::onTick);
@@ -19,37 +21,37 @@ GameManager::~GameManager()
 
 void GameManager::initialize()
 {
+    // 生成本局随机种子
+    m_gameSeed = QRandomGenerator::global()->generate();
+    m_rng.seed(m_gameSeed);
+    print(QString("Game seed: %1").arg(m_gameSeed));
+
     // 重置玩家资源
     m_player.gold = 10;
     m_player.exp = 0;
     m_player.ownedChesses.clear();
 
-    // 放入 5 个默认占位角色，全部部署到战场（后续商店上线后可改为从备战席部署）
-    m_player.ownedChesses.reserve(5);
-    for (int i = 0; i < 5; ++i)
+    // 开局免费给1个角色A放在备战席
     {
-        ChessConfig cfg;
-        cfg.configId = i + 1;
-        cfg.name = QString("Role%1").arg(i + 1);
-        cfg.cost = 1;
-        cfg.baseHp = 30 + i * 5;
-        cfg.baseAtk = 8 + i * 2;
-        cfg.baseDef = 1 + (i % 2);
-        cfg.hpGrowthMultiplier = 1.10f;
-        cfg.atkGrowthMultiplier = 1.08f;
-        cfg.attackRange = 1;
-        cfg.baseAttackSpeed = 1.0f + 0.1f * i;
-        cfg.maxMp = 100;
-        cfg.speed = 1.0;
-        cfg.description = QString("Default placeholder hero %1").arg(i + 1);
-        cfg.bonds = {};
-        m_player.ownedChesses.emplace_back(cfg);
-        // 默认全部部署到战场
-        ChessInstance &inst = m_player.ownedChesses.back();
-        inst.deployed = true;
-        inst.benchSlot = -1;
-        inst.posX = 260.0 + (static_cast<double>(i % 3) * 140.0);
-        inst.posY = 160.0 + (static_cast<double>(i / 3) * 180.0);
+        ChessConfig starter;
+        starter.configId = 1;
+        starter.name = QStringLiteral("角色A");
+        starter.cost = 1;
+        starter.baseHp = 1000;
+        starter.baseAtk = 50;
+        starter.baseDef = 100;
+        starter.hpGrowthMultiplier = 1.50f;
+        starter.atkGrowthMultiplier = 1.50f;
+        starter.attackRange = 1;
+        starter.baseAttackSpeed = 1.0f;
+        starter.maxMp = 100;
+        starter.speed = 1.0;
+        starter.description = QStringLiteral("高血量坦克型角色");
+        starter.bonds = {QStringLiteral("坦克")};
+        ChessInstance inst(starter);
+        inst.deployed = false;
+        inst.benchSlot = 0;
+        m_player.ownedChesses.push_back(inst);
     }
 
     m_enemies.clear();
@@ -99,15 +101,14 @@ void GameManager::nextRound()
 
 void GameManager::resetUnitsForNextRound()
 {
-    // 复活所有单位、重置HP/MP/冷却，但保持 deployed/pos/benchSlot
     for (auto &unit : m_player.ownedChesses)
-    {
-        unit.resetStatus(); // HP/MP/isAlive 恢复
-    }
+        unit.resetStatus();
+    m_enemies.clear();
     m_attackCooldownRemaining.clear();
     m_towerAttackCooldown = 0.0;
     m_timeAccumulator = 0.0;
-    print("All units reset for next round, formation preserved");
+    m_player.gold += 10;
+    print("All units reset, enemies cleared, +10 gold for next round");
 }
 
 void GameManager::transitionPhase(RoundPhase newPhase)
@@ -118,41 +119,75 @@ void GameManager::transitionPhase(RoundPhase newPhase)
     emit phaseChanged(m_phase);
 }
 
-// Create a few simple enemies for the round
 void GameManager::spawnEnemies(int roundNumber)
 {
     m_enemies.clear();
-    m_enemyConfigs.clear();
 
-    // For a minimal workable demo we create 3 enemies with increasing stats
-    for (int i = 0; i < 3; ++i)
-    {
-        EnemyConfig cfg;
-        cfg.configId = i + 1;
-        cfg.name = QString("Enemy%1").arg(i + 1);
-        cfg.baseHp = 20 + roundNumber * 5 + i * 5;
-        cfg.baseAtk = 5 + roundNumber * 2 + i;
-        cfg.baseDef = 0;
-        cfg.hpGrowthMultiplier = 1.0f;
-        cfg.atkGrowthMultiplier = 1.0f;
-        cfg.baseAttackSpeed = 1.0f;
-        cfg.speed = 1.0;
-        cfg.maxMp = 0;
-        cfg.baseGoldReward = 1;
-        cfg.baseExpReward = 1;
-        cfg.description = "";
-        m_enemyConfigs.push_back(cfg);
-    }
+    int count = 3 + (roundNumber > 5 ? 1 : 0);
+    auto picked = pickRandomEnemies(count, roundNumber);
 
-    int uidBase = 1000;
-    for (size_t i = 0; i < m_enemyConfigs.size(); ++i)
+    int uidBase = 1000 + roundNumber * 100;
+    for (size_t i = 0; i < picked.size(); ++i)
     {
-        m_enemies.emplace_back(uidBase + static_cast<int>(i), m_enemyConfigs[i], false, roundNumber);
-        // 设置敌人场景坐标（与 refreshBattleGround 中的渲染位置一致）
+        m_enemies.emplace_back(uidBase + static_cast<int>(i), picked[i], false, roundNumber);
         EnemyInstance &e = m_enemies.back();
         e.posX = 1180.0 + (static_cast<double>(i % 3) * 140.0);
         e.posY = 160.0 + (static_cast<double>(i / 3) * 180.0);
     }
+}
+
+std::vector<EnemyConfig> GameManager::pickRandomEnemies(int count, int roundNumber)
+{
+    // 硬编码两个敌方图鉴（敌人X和敌人Y）
+    static const std::vector<EnemyConfig> pool = []()
+    {
+        std::vector<EnemyConfig> p;
+        {
+            EnemyConfig c;
+            c.configId = 1;
+            c.name = QStringLiteral("敌人X");
+            c.baseHp = 500;
+            c.baseAtk = 50;
+            c.baseDef = 100;
+            c.hpGrowthMultiplier = 1.30f;
+            c.atkGrowthMultiplier = 1.30f;
+            c.baseAttackSpeed = 1.0f;
+            c.speed = 1.0;
+            c.maxMp = 0;
+            c.baseGoldReward = 3;
+            c.baseExpReward = 2;
+            p.push_back(c);
+        }
+        {
+            EnemyConfig c;
+            c.configId = 2;
+            c.name = QStringLiteral("敌人Y");
+            c.baseHp = 250;
+            c.baseAtk = 100;
+            c.baseDef = 200;
+            c.hpGrowthMultiplier = 1.30f;
+            c.atkGrowthMultiplier = 1.30f;
+            c.baseAttackSpeed = 1.0f;
+            c.speed = 1.0;
+            c.maxMp = 0;
+            c.baseGoldReward = 3;
+            c.baseExpReward = 2;
+            p.push_back(c);
+        }
+        return p;
+    }();
+
+    std::vector<EnemyConfig> result;
+    result.reserve(count);
+    for (int i = 0; i < count; ++i)
+    {
+        int idx = m_rng.bounded(static_cast<int>(pool.size()));
+        EnemyConfig cfg = pool[idx];
+        cfg.baseHp += roundNumber * 10;
+        cfg.baseAtk += roundNumber * 3;
+        result.push_back(cfg);
+    }
+    return result;
 }
 
 void GameManager::onTick()
@@ -205,9 +240,23 @@ void GameManager::executeAttackCycle(double deltaSeconds)
         {
             int dmg = ally.atk.getFinal();
             it->takeDamage(dmg);
+            // 角色A橙色，角色B绿色
+            int cr = 255, cg = 80, cb = 80;
+            if (ally.configId == 1)
+            {
+                cr = 255;
+                cg = 140;
+                cb = 50;
+            }
+            else if (ally.configId == 2)
+            {
+                cr = 100;
+                cg = 220;
+                cb = 80;
+            }
             emit floatingText(QString("-%1").arg(dmg),
                               it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              255, 80, 80);
+                              cr, cg, cb);
             print(QString("Ally %1 hits Enemy %2 for %3 dmg").arg(ally.uuid).arg(it->uuid).arg(dmg));
 
             if (!it->isAlive)
@@ -245,8 +294,8 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             it->takeDamage(dmg);
             emit floatingText(QString("-%1").arg(dmg),
                               it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              255, 180, 50);
-            print(QString("Enemy %1 hits Ally %2 for %3 dmg").arg(enemy.uuid).arg(it->uuid).arg(dmg));
+                              255, 255, 255);
+            print(QString("Enemy %1 hits Ally %2").arg(enemy.uuid).arg(it->uuid));
             if (!it->isAlive)
                 print(QString("Ally %1 died").arg(it->uuid));
         }
@@ -256,7 +305,7 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             m_towerHp -= dmg;
             emit floatingText(QString("-%1").arg(dmg),
                               80.0 + jitter(), 400.0 + jitter(),
-                              255, 220, 60);
+                              255, 255, 255);
             print(QString("Enemy %1 hits tower for %2 dmg, towerHP=%3").arg(enemy.uuid).arg(dmg).arg(m_towerHp));
         }
 
@@ -274,7 +323,7 @@ void GameManager::executeAttackCycle(double deltaSeconds)
         {
             double hpRatio = static_cast<double>(m_towerHp) / static_cast<double>(m_maxTowerHp);
             double multiplier = 1.0 + (1.0 - hpRatio) * 3.0;
-            int baseDmg = 15;
+            int baseDmg = 30;
             int dmg = static_cast<int>(baseDmg * multiplier);
             it->takeDamage(dmg);
             // 塔伤害跳字：纯蓝色，无"塔"前缀
@@ -316,4 +365,108 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
 
     outVictory = false;
     return false;
+}
+
+void GameManager::checkAndMergeStars()
+{
+    auto &units = m_player.ownedChesses;
+    bool merged = true;
+    while (merged)
+    {
+        merged = false;
+        for (size_t i = 0; i < units.size(); ++i)
+        {
+            if (!units[i].isAlive)
+                continue;
+            int cfgId = units[i].configId;
+            int star = units[i].starLevel;
+
+            std::vector<size_t> same;
+            for (size_t j = 0; j < units.size(); ++j)
+            {
+                if (i == j)
+                    continue;
+                if (!units[j].isAlive)
+                    continue;
+                if (units[j].configId == cfgId && units[j].starLevel == star)
+                    same.push_back(j);
+                if (same.size() >= 2)
+                    break;
+            }
+
+            if (same.size() >= 2)
+            {
+                size_t a = i, b = same[0], c = same[1];
+                // 合并目标优先：战场上的 > 备战席靠左的
+                size_t target = a;
+                auto rank = [&](size_t idx) -> int
+                {
+                    if (units[idx].deployed)
+                        return 0;
+                    return units[idx].benchSlot + 1;
+                };
+                if (rank(b) < rank(target))
+                    target = b;
+                if (rank(c) < rank(target))
+                    target = c;
+
+                units[target].starLevel++;
+                units[target].calculateBaseStatsByStar();
+                units[target].resetStatus();
+
+                size_t d1 = (target == a) ? b : a;
+                size_t d2 = (target == c) ? c : ((target == b) ? c : b);
+                if (d1 == d2)
+                {
+                    // 如果d1和d2指向同一元素，调整
+                    for (size_t s : same)
+                        if (s != d1)
+                        {
+                            d2 = s;
+                            break;
+                        }
+                }
+                if (d1 > d2)
+                    std::swap(d1, d2);
+                units.erase(units.begin() + static_cast<long long>(d2));
+                units.erase(units.begin() + static_cast<long long>(d1));
+
+                print(QString("Merged 3x %1★%2 → %3★%4 (uuid=%5)")
+                          .arg(star)
+                          .arg(cfgId)
+                          .arg(star + 1)
+                          .arg(cfgId)
+                          .arg(units[target].uuid));
+                merged = true;
+                break;
+            }
+        }
+    }
+}
+
+int GameManager::sellUnit(int uuid)
+{
+    auto &units = m_player.ownedChesses;
+    for (size_t i = 0; i < units.size(); ++i)
+    {
+        if (units[i].uuid == uuid)
+        {
+            int star = units[i].starLevel;
+            int cost = units[i].cost;
+            int refund = cost;
+            for (int s = 1; s < star; ++s)
+                refund *= 3;
+
+            m_player.gold += refund;
+            print(QString("Sold %1★%2 (uuid=%3) for %4 gold")
+                      .arg(star)
+                      .arg(units[i].name)
+                      .arg(uuid)
+                      .arg(refund));
+
+            units.erase(units.begin() + static_cast<long long>(i));
+            return refund;
+        }
+    }
+    return 0;
 }

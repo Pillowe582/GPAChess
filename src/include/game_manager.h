@@ -3,6 +3,7 @@
 
 #include <QObject>
 #include <QTimer>
+#include <QRandomGenerator>
 #include <vector>
 #include <unordered_map>
 
@@ -33,6 +34,20 @@ public:
     PlayerAssets &getPlayerAssets() { return m_player; }
     const PlayerAssets &getPlayerAssets() const { return m_player; }
     const std::vector<EnemyInstance> &getEnemies() const { return m_enemies; }
+
+    /// 设置/获取本局随机种子
+    void setGameSeed(quint32 seed)
+    {
+        m_gameSeed = seed;
+        m_rng.seed(seed);
+    }
+    quint32 gameSeed() const { return m_gameSeed; }
+
+    /// 检查并执行升星合并（3个同种同星→1个高星）
+    void checkAndMergeStars();
+
+    /// 出售单位，返回获得的费用
+    int sellUnit(int uuid);
 
     /// 本回合获得的金币/经验（与回合开始前快照对比）
     int getRoundGoldEarned() const { return m_player.gold - m_roundStartGold; }
@@ -65,6 +80,7 @@ private slots:
 private:
     void transitionPhase(RoundPhase newPhase);
     void spawnEnemies(int roundNumber);
+    std::vector<EnemyConfig> pickRandomEnemies(int count, int roundNumber);
     void executeAttackCycle(double deltaSeconds);
     bool checkCombatEndConditions(bool &outVictory);
     void resetUnitsForNextRound();
@@ -88,6 +104,8 @@ private:
     std::unordered_map<int, double> m_attackCooldownRemaining;
     double m_towerAttackCooldown = 0.0; // 塔攻击冷却
     double m_timeAccumulator;
+    quint32 m_gameSeed = 12345;
+    QRandomGenerator m_rng{12345};
 };
 
 #endif
