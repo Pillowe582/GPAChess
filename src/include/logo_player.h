@@ -24,7 +24,8 @@ private:
     QLabel *logoLabel;
     QTimer *timer;
     int currentFrame;
-    const int maxFrame = 404;
+    // const int maxFrame = 404;
+    const int maxFrame = 0;
     const float fps = 60;
 };
 #endif
