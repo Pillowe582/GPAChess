@@ -116,7 +116,7 @@ void ShopWindow::onPurchaseClicked()
 
 void ShopWindow::onRefreshClicked()
 {
-    const int cost = 4;
+    const int cost = 2;
     auto &assets = m_gameManager->getPlayerAssets();
     if (assets.gold < cost)
     {
