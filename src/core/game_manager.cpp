@@ -1,4 +1,5 @@
 #include "game_manager.h"
+#include "database_manager.h"
 #include "print.h"
 
 #include <algorithm>
@@ -31,27 +32,17 @@ void GameManager::initialize()
     m_player.exp = 0;
     m_player.ownedChesses.clear();
 
-    // 开局免费给1个角色A放在备战席
+    // 开局免费给1个角色A放在备战席（从数据库读取）
+    if (m_database)
     {
-        ChessConfig starter;
-        starter.configId = 1;
-        starter.name = QStringLiteral("角色A");
-        starter.cost = 1;
-        starter.baseHp = 1000;
-        starter.baseAtk = 50;
-        starter.baseDef = 100;
-        starter.hpGrowthMultiplier = 1.50f;
-        starter.atkGrowthMultiplier = 1.50f;
-        starter.attackRange = 1;
-        starter.baseAttackSpeed = 1.0f;
-        starter.maxMp = 100;
-        starter.speed = 1.0;
-        starter.description = QStringLiteral("高血量坦克型角色");
-        starter.bonds = {QStringLiteral("坦克")};
-        ChessInstance inst(starter);
-        inst.deployed = false;
-        inst.benchSlot = 0;
-        m_player.ownedChesses.push_back(inst);
+        const ChessConfig *starterCfg = m_database->findChess(1);
+        if (starterCfg)
+        {
+            ChessInstance inst(*starterCfg);
+            inst.deployed = false;
+            inst.benchSlot = 0;
+            m_player.ownedChesses.push_back(inst);
+        }
     }
 
     m_enemies.clear();
@@ -138,46 +129,14 @@ void GameManager::spawnEnemies(int roundNumber)
 
 std::vector<EnemyConfig> GameManager::pickRandomEnemies(int count, int roundNumber)
 {
-    // 硬编码两个敌方图鉴（敌人X和敌人Y）
-    static const std::vector<EnemyConfig> pool = []()
-    {
-        std::vector<EnemyConfig> p;
-        {
-            EnemyConfig c;
-            c.configId = 1;
-            c.name = QStringLiteral("敌人X");
-            c.baseHp = 500;
-            c.baseAtk = 50;
-            c.baseDef = 100;
-            c.hpGrowthMultiplier = 1.30f;
-            c.atkGrowthMultiplier = 1.30f;
-            c.baseAttackSpeed = 1.0f;
-            c.speed = 1.0;
-            c.maxMp = 0;
-            c.baseGoldReward = 3;
-            c.baseExpReward = 2;
-            p.push_back(c);
-        }
-        {
-            EnemyConfig c;
-            c.configId = 2;
-            c.name = QStringLiteral("敌人Y");
-            c.baseHp = 250;
-            c.baseAtk = 100;
-            c.baseDef = 200;
-            c.hpGrowthMultiplier = 1.30f;
-            c.atkGrowthMultiplier = 1.30f;
-            c.baseAttackSpeed = 1.0f;
-            c.speed = 1.0;
-            c.maxMp = 0;
-            c.baseGoldReward = 3;
-            c.baseExpReward = 2;
-            p.push_back(c);
-        }
-        return p;
-    }();
-
     std::vector<EnemyConfig> result;
+    if (!m_database)
+        return result;
+
+    const auto &pool = m_database->allEnemyConfigs();
+    if (pool.empty())
+        return result;
+
     result.reserve(count);
     for (int i = 0; i < count; ++i)
     {
@@ -241,22 +200,14 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             int dmg = ally.atk.getFinal();
             it->takeDamage(dmg);
             // 角色A橙色，角色B绿色
-            int cr = 255, cg = 80, cb = 80;
+            QString allyColor = "#FF8C32";
             if (ally.configId == 1)
-            {
-                cr = 255;
-                cg = 140;
-                cb = 50;
-            }
+                allyColor = "#FF8C32";
             else if (ally.configId == 2)
-            {
-                cr = 100;
-                cg = 220;
-                cb = 80;
-            }
+                allyColor = "#64DC50";
             emit floatingText(QString("-%1").arg(dmg),
                               it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              cr, cg, cb);
+                              allyColor);
             print(QString("Ally %1 hits Enemy %2 for %3 dmg").arg(ally.uuid).arg(it->uuid).arg(dmg));
 
             if (!it->isAlive)
@@ -294,7 +245,7 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             it->takeDamage(dmg);
             emit floatingText(QString("-%1").arg(dmg),
                               it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              255, 255, 255);
+                              "#FFFFFF");
             print(QString("Enemy %1 hits Ally %2").arg(enemy.uuid).arg(it->uuid));
             if (!it->isAlive)
                 print(QString("Ally %1 died").arg(it->uuid));
@@ -305,7 +256,7 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             m_towerHp -= dmg;
             emit floatingText(QString("-%1").arg(dmg),
                               80.0 + jitter(), 400.0 + jitter(),
-                              255, 255, 255);
+                              "#FFFFFF");
             print(QString("Enemy %1 hits tower for %2 dmg, towerHP=%3").arg(enemy.uuid).arg(dmg).arg(m_towerHp));
         }
 
@@ -329,7 +280,7 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             // 塔伤害跳字：纯蓝色，无"塔"前缀
             emit floatingText(QString("-%1").arg(dmg),
                               it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              70, 150, 255);
+                              "#4696FF");
             print(QString("Tower hits Enemy %1 for %2 dmg (x%3)").arg(it->uuid).arg(dmg).arg(multiplier, 0, 'f', 2));
 
             if (!it->isAlive)

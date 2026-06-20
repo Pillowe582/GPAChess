@@ -9,6 +9,8 @@
 
 #include "state.h"
 
+class DatabaseManager;
+
 class GameManager : public QObject
 {
     Q_OBJECT
@@ -43,6 +45,9 @@ public:
     }
     quint32 gameSeed() const { return m_gameSeed; }
 
+    /// 设置图鉴数据库引用
+    void setDatabase(DatabaseManager *db) { m_database = db; }
+
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
 
@@ -71,8 +76,8 @@ signals:
     void phaseChanged(RoundPhase newPhase);
     // 回合结束，参数为是否我方胜利
     void roundEnded(bool victory);
-    /// 伤害/治疗跳字 (文字, 场景x, 场景y, R, G, B)
-    void floatingText(const QString &text, double x, double y, int r, int g, int b);
+    /// 伤害/治疗跳字 (文字, 场景x, 场景y, #RRGGBB颜色)
+    void floatingText(const QString &text, double x, double y, const QString &color);
 
 private slots:
     void onTick();
@@ -106,6 +111,7 @@ private:
     double m_timeAccumulator;
     quint32 m_gameSeed = 12345;
     QRandomGenerator m_rng{12345};
+    DatabaseManager *m_database = nullptr;
 };
 
 #endif

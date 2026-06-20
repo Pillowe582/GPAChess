@@ -2,7 +2,6 @@
 #include "print.h"
 
 LogoPlayer::LogoPlayer(QLabel *uiLabel, QWidget *parent) : QWidget(parent), currentFrame(0)
-// 让LogoPlayer构造的魔法
 // 传入一个QLabel指针作为序列帧的显示区域
 {
     print("LogoPlayer initialized");
@@ -23,7 +22,8 @@ void LogoPlayer::updateFrame() // 让LogoPlayer更新帧的魔法
         return;
     }
 
-    QString path = QString("assets/logo_frames/logo_frame_%1.png").arg(currentFrame, 3, 10, QChar('0')); // 构造资源路径，命名为logo_frame_000.png
+    QString path = QString("assets/logo_frames/logo_frame_%1.png")
+                       .arg(currentFrame, 3, 10, QChar('0')); // 构造资源路径，命名为logo_frame_000.png
     QPixmap pixmap(path);
     if (pixmap.isNull())
     {

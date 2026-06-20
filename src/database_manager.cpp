@@ -1,105 +1,116 @@
 #include "database_manager.h"
+#include <QCoreApplication>
+#include <QSqlQuery>
+#include <QSqlError>
 
-DatabaseManager::DatabaseManager(QObject *parent) : QObject(parent)
+DatabaseManager::DatabaseManager(const QString &dataDir, QObject *parent)
+    : QObject(parent)
 {
-    initChessDb();
-    initEnemyDb();
+    openDb(dataDir + "/role.db", "role_conn", m_chessDb);
+    openDb(dataDir + "/enemy.db", "enemy_conn", m_enemyDb);
+    loadFromDb();
 }
 
-void DatabaseManager::initChessDb()
+/// @brief 打开数据库连接
+/// @param path 数据库文件路径
+/// @param connName 该数据库连接的名称
+/// @param outDb 输出参数：打开的数据库连接
+void DatabaseManager::openDb(const QString &path, const QString &connName, QSqlDatabase &outDb)
 {
-    // 角色A: 1000hp 50atk 100def
+    outDb = QSqlDatabase::addDatabase("QSQLITE", connName);
+    outDb.setDatabaseName(path);
+    if (!outDb.open())
+        qFatal("Cannot open database: %s", qPrintable(path));
+}
+
+/// @brief 从数据库加载配置数据到内存
+void DatabaseManager::loadFromDb()
+{
+    m_chessConfigs.clear();
+    m_enemyConfigs.clear();
+
+    // 验证并加载 chess_config
+    bool hasChessData = false;
+    QSqlQuery chessSqlQuery(m_chessDb);
+    chessSqlQuery.exec("SELECT * FROM chess_config");
+    while (chessSqlQuery.next())
     {
-        ChessConfig c;
-        c.configId = 1;
-        c.name = QStringLiteral("角色A");
-        c.cost = 1;
-        c.baseHp = 1000;
-        c.baseAtk = 50;
-        c.baseDef = 100;
-        c.hpGrowthMultiplier = 1.50f;
-        c.atkGrowthMultiplier = 1.50f;
-        c.attackRange = 1;
-        c.baseAttackSpeed = 1.0f;
-        c.maxMp = 100;
-        c.speed = 1.0;
-        c.description = QStringLiteral("高血量坦克型角色");
-        c.bonds = {QStringLiteral("坦克")};
-        m_chessConfigs.push_back(c);
+        hasChessData = true; // 只要能读到至少一行数据就认为表存在且不空
+        ChessConfig chessConfigItem;
+        chessConfigItem.configId = chessSqlQuery.value(0).toInt();
+        chessConfigItem.name = chessSqlQuery.value(1).toString();
+        chessConfigItem.cost = chessSqlQuery.value(2).toInt();
+        chessConfigItem.baseHp = chessSqlQuery.value(3).toInt();
+        chessConfigItem.baseAtk = chessSqlQuery.value(4).toInt();
+        chessConfigItem.baseDef = chessSqlQuery.value(5).toInt();
+        chessConfigItem.hpGrowthMultiplier = chessSqlQuery.value(6).toFloat();
+        chessConfigItem.atkGrowthMultiplier = chessSqlQuery.value(7).toFloat();
+        chessConfigItem.attackRange = chessSqlQuery.value(8).toInt();
+        chessConfigItem.baseAttackSpeed = chessSqlQuery.value(9).toFloat();
+        chessConfigItem.maxMp = chessSqlQuery.value(10).toInt();
+        chessConfigItem.speed = chessSqlQuery.value(11).toDouble();
+        chessConfigItem.description = chessSqlQuery.value(12).toString();
+        chessConfigItem.bonds = chessSqlQuery.value(13).toString().split(',', Qt::SkipEmptyParts);
+        m_chessConfigs.push_back(chessConfigItem);
     }
-    // 角色B: 500hp 100atk 200def
+    if (!hasChessData)
     {
-        ChessConfig c;
-        c.configId = 2;
-        c.name = QStringLiteral("角色B");
-        c.cost = 1;
-        c.baseHp = 500;
-        c.baseAtk = 100;
-        c.baseDef = 200;
-        c.hpGrowthMultiplier = 1.50f;
-        c.atkGrowthMultiplier = 1.50f;
-        c.attackRange = 1;
-        c.baseAttackSpeed = 1.0f;
-        c.maxMp = 100;
-        c.speed = 1.0;
-        c.description = QStringLiteral("高防御输出型角色");
-        c.bonds = {QStringLiteral("输出")};
-        m_chessConfigs.push_back(c);
+        qFatal("role.db: table 'chess_config' is missing or empty");
+    }
+
+    // 验证并加载 enemy_config
+    bool hasEnemyData = false;
+    QSqlQuery enemySqlQuery(m_enemyDb);
+    enemySqlQuery.exec("SELECT * FROM enemy_config");
+    while (enemySqlQuery.next())
+    {
+        hasEnemyData = true; // 只要能读到至少一行数据就认为表存在且不空
+        EnemyConfig enemyConfigItem;
+        enemyConfigItem.configId = enemySqlQuery.value(0).toInt();
+        enemyConfigItem.name = enemySqlQuery.value(1).toString();
+        enemyConfigItem.baseHp = enemySqlQuery.value(2).toInt();
+        enemyConfigItem.baseAtk = enemySqlQuery.value(3).toInt();
+        enemyConfigItem.baseDef = enemySqlQuery.value(4).toInt();
+        enemyConfigItem.hpGrowthMultiplier = enemySqlQuery.value(5).toFloat();
+        enemyConfigItem.atkGrowthMultiplier = enemySqlQuery.value(6).toFloat();
+        enemyConfigItem.attackRange = enemySqlQuery.value(7).toInt();
+        enemyConfigItem.baseAttackSpeed = enemySqlQuery.value(8).toFloat();
+        enemyConfigItem.maxMp = enemySqlQuery.value(9).toInt();
+        enemyConfigItem.speed = enemySqlQuery.value(10).toDouble();
+        enemyConfigItem.description = enemySqlQuery.value(11).toString();
+        enemyConfigItem.baseGoldReward = enemySqlQuery.value(12).toInt();
+        enemyConfigItem.baseExpReward = enemySqlQuery.value(13).toInt();
+        m_enemyConfigs.push_back(enemyConfigItem);
+    }
+    if (!hasEnemyData)
+    {
+        qFatal("enemy.db: table 'enemy_config' is missing or empty");
     }
 }
 
-void DatabaseManager::initEnemyDb()
-{
-    // 敌人X: 1000hp 50atk 100def
-    {
-        EnemyConfig c;
-        c.configId = 1;
-        c.name = QStringLiteral("敌人X");
-        c.baseHp = 500;
-        c.baseAtk = 50;
-        c.baseDef = 100;
-        c.hpGrowthMultiplier = 1.30f;
-        c.atkGrowthMultiplier = 1.30f;
-        c.baseAttackSpeed = 1.0f;
-        c.speed = 1.0;
-        c.maxMp = 0;
-        c.baseGoldReward = 3;
-        c.baseExpReward = 2;
-        c.description = QStringLiteral("敌方坦克");
-        m_enemyConfigs.push_back(c);
-    }
-    // 敌人Y: 500hp 100atk 200def
-    {
-        EnemyConfig c;
-        c.configId = 2;
-        c.name = QStringLiteral("敌人Y");
-        c.baseHp = 250;
-        c.baseAtk = 100;
-        c.baseDef = 200;
-        c.hpGrowthMultiplier = 1.30f;
-        c.atkGrowthMultiplier = 1.30f;
-        c.baseAttackSpeed = 1.0f;
-        c.speed = 1.0;
-        c.maxMp = 0;
-        c.baseGoldReward = 3;
-        c.baseExpReward = 2;
-        c.description = QStringLiteral("敌方输出");
-        m_enemyConfigs.push_back(c);
-    }
-}
-
+/// @brief  根据 configId 查找棋子配置
+/// @param configId
+/// @return 找到则返回指向配置的指针，否则返回 nullptr
 const ChessConfig *DatabaseManager::findChess(int configId) const
 {
     for (const auto &c : m_chessConfigs)
+    {
         if (c.configId == configId)
+
             return &c;
+    }
     return nullptr;
 }
 
+/// @brief  根据 configId 查找敌人配置
+/// @param configId
+/// @return  找到则返回指向配置的指针，否则返回 nullptr
 const EnemyConfig *DatabaseManager::findEnemy(int configId) const
 {
     for (const auto &c : m_enemyConfigs)
+    {
         if (c.configId == configId)
             return &c;
+    }
     return nullptr;
 }

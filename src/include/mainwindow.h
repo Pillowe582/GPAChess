@@ -45,10 +45,13 @@ private slots:
 private:
     Ui::MainWindow *ui;
     void initUi();
-    void setupMergedScene();
+    void initGame();
+    void setupGameScene();
     void refreshBattleGround();
     void refreshAllUnits();
     void refreshSceneLabels();
+    void showSplashText(const QString &text, double x, double y, const QString &color);
+    void showRoundResult(bool victory);
     QString assetPath(const QString &relativePath) const;
 
     // 合法性判定
