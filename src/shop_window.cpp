@@ -134,6 +134,7 @@ void ShopWindow::updateGoldLabel()
 
 void ShopWindow::closeEvent(QCloseEvent *event)
 {
+    print("关闭商店窗口");
     emit shopClosed();
     QMainWindow::closeEvent(event);
 }

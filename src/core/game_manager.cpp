@@ -303,7 +303,10 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     return false;
 }
 // % 商店逻辑
-void GameManager::openShop()
+
+/// @brief 打开商店窗口
+/// @param onClose 商店关闭时的回调函数
+void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(int))
 {
 
     if (!m_database)
@@ -326,8 +329,14 @@ void GameManager::openShop()
     }
     m_shopWindow = new ShopWindow(m_database, this);
 
-    // 连接商店关闭信号，确保在商店关闭后检查是否有可合并的单位
-    connect(m_shopWindow, &ShopWindow::shopClosed, this, &GameManager::checkAndMergeStars);
+    // 商店关闭回调
+    connect(m_shopWindow, &ShopWindow::shopClosed, this, [this, mainWindow, onClose]()
+            {
+                checkAndMergeStars();
+                if (mainWindow && onClose)
+                {
+                    (mainWindow->*onClose)(MainWindow::RefreshAll);
+                } });
     m_shopWindow->refreshShop();
     m_shopWindow->show();
 }

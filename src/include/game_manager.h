@@ -2,6 +2,7 @@
 #define GAMEMANAGER_H
 
 #include <QObject>
+#include "mainwindow.h"
 #include "shop_window.h"
 #include <QTimer>
 #include <QRandomGenerator>
@@ -49,7 +50,13 @@ public:
 
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
-    void openShop(); // 打开商店（仅在准备阶段可用）
+
+    // 打开商店，以及商店关闭时的回调
+    void openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(int));
+    void openShop() // 无回调版本
+    {
+        openShop(nullptr, nullptr);
+    }
 
     // 计算单位总价值（用于出售时返还金币）
     int getTotalWorth(int star, int cost)

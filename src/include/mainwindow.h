@@ -36,6 +36,15 @@ public:
         EntryMenu = 1,
         MainGame = 2,
     };
+
+    enum RefreshFlag
+    {
+        RefreshUnits = 0x01,
+        RefreshLabels = 0x02,
+        RefreshAll = RefreshUnits | RefreshLabels
+    };
+
+    void refreshScene(int flags = RefreshAll);
     int switchScene(Scene scene);
 
 private slots:
@@ -81,7 +90,7 @@ private:
     QGraphicsScene *m_battleScene = nullptr;
     QGraphicsSimpleTextItem *m_sellLabel = nullptr;
     QMap<int, UnitGraphicsItem *> m_unitItems;
-    
+
     DatabaseManager *m_database = nullptr;
 };
 

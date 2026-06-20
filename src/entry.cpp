@@ -89,12 +89,11 @@ void MainWindow::initGame()
             print(QString("回合阶段改变至: %1").arg(static_cast<int>(p)));
             ui->startRoundButton->setEnabled(p == RoundPhase::Prepare);
             ui->openShopButton->setEnabled(p == RoundPhase::Prepare);
-            refreshSceneLabels();
-            refreshAllUnits(); });
+            refreshScene(RefreshAll); });
 
         // tick 信号 → 刷新单位
         connect(m_gameManager, &GameManager::tick, this, [this]()
-                { refreshAllUnits(); });
+                { refreshScene(RefreshUnits); });
 
         // 回合结束 → 显示结果
         connect(m_gameManager, &GameManager::roundEnded,
@@ -109,15 +108,14 @@ void MainWindow::initGame()
                 {
             if (!m_gameManager) return;
             m_gameManager->startRound(m_gameManager->getRoundNumber());
-            refreshAllUnits(); });
+            refreshScene(RefreshAll); });
 
         // 点击商店按钮 → 打开商店窗口
         connect(ui->openShopButton, &QPushButton::clicked,
                 this, &MainWindow::onShopOpenClicked);
     }
 
-    refreshAllUnits();
-    refreshSceneLabels();
+    refreshScene(RefreshAll);
 }
 
 MainWindow::~MainWindow()
@@ -256,8 +254,19 @@ void MainWindow::setupGameScene()
 }
 
 // ============================================================================
-// % 战场刷新
+// % 刷新
 // ============================================================================
+void MainWindow::refreshScene(int flags)
+{
+    if (flags & RefreshUnits)
+    {
+        refreshAllUnits();
+    }
+    if (flags & RefreshLabels)
+    {
+        refreshSceneLabels();
+    }
+}
 
 /// @brief 刷新我方单位（部署 → 用 posX/posY；备战 → 按槽位算坐标）
 void MainWindow::refreshAllUnits()
@@ -321,6 +330,28 @@ void MainWindow::refreshAllUnits()
     }
     for (int uuid : toRemove)
         delete m_unitItems.take(uuid);
+}
+
+/// @brief 根据当前 GameManager 状态更新所有 UI 标签
+void MainWindow::refreshSceneLabels()
+{
+    if (!m_gameManager)
+        return;
+
+    int round = m_gameManager->getRoundNumber();
+    int credit = GameManager::getRoundCredit(round);
+    const auto &assets = m_gameManager->getPlayerAssets();
+
+    if (auto *lbl = findChild<QLabel *>("roundCount"))
+        lbl->setText(QString("第%1门：XXX, %2cr").arg(round).arg(credit));
+    if (auto *lbl = findChild<QLabel *>("totalCredit"))
+        lbl->setText(QString("已修学分：%1").arg(m_gameManager->getPreviousCredits()));
+    if (auto *lbl = findChild<QLabel *>("gpa"))
+        lbl->setText(QString("GPA：%1/4.0").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
+    if (auto *lbl = findChild<QLabel *>("roundValue"))
+        lbl->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
+    if (auto *lbl = findChild<QLabel *>("goldCount"))
+        lbl->setText(QString("金币：%1").arg(assets.gold));
 }
 
 // ============================================================================
@@ -430,7 +461,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
     // 非准备阶段不允许拖拽
     if (m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
     {
-        refreshAllUnits();
+        refreshScene(RefreshUnits); // 弹回
         return;
     }
 
@@ -443,7 +474,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
     {
         m_sellLabel->setText(QStringLiteral("出售"));
         recenterSellLabel();
-        refreshAllUnits();
+        refreshScene(RefreshUnits); // 弹回
         return;
     }
 
@@ -456,8 +487,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
         m_gameManager->sellUnit(uuid);
         m_sellLabel->setText(QStringLiteral("出售"));
         recenterSellLabel();
-        refreshAllUnits();
-        refreshSceneLabels();
+        refreshScene(RefreshAll);
         return;
     }
 
@@ -544,41 +574,13 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
 
     m_sellLabel->setText(QStringLiteral("出售"));
     recenterSellLabel();
-    refreshAllUnits();
-}
-
-// ============================================================================
-// % 战场上方标签
-// ============================================================================
-
-/// @brief 根据当前 GameManager 状态更新所有 UI 标签
-void MainWindow::refreshSceneLabels()
-{
-    if (!m_gameManager)
-        return;
-
-    int round = m_gameManager->getRoundNumber();
-    int credit = GameManager::getRoundCredit(round);
-    const auto &assets = m_gameManager->getPlayerAssets();
-
-    if (auto *lbl = findChild<QLabel *>("roundCount"))
-        lbl->setText(QString("第%1门：XXX, %2cr").arg(round).arg(credit));
-    if (auto *lbl = findChild<QLabel *>("totalCredit"))
-        lbl->setText(QString("已修学分：%1").arg(m_gameManager->getPreviousCredits()));
-    if (auto *lbl = findChild<QLabel *>("gpa"))
-        lbl->setText(QString("GPA：%1/4.0").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
-    if (auto *lbl = findChild<QLabel *>("roundValue"))
-        lbl->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
-    if (auto *lbl = findChild<QLabel *>("goldCount"))
-        lbl->setText(QString("金币：%1").arg(assets.gold));
+    refreshScene(RefreshUnits); // 刷新单位位置（可能被修改，也可能弹回原位）
 }
 
 /// @brief 打开商店窗口（仅在准备阶段可用）
 void MainWindow::onShopOpenClicked()
 {
-    m_gameManager->openShop();
-    refreshAllUnits();
-    refreshSceneLabels();
+    m_gameManager->openShop(this, &MainWindow::refreshScene); // 商店关闭后的回调：刷新整个场景
 }
 
 // ============================================================================
@@ -592,8 +594,7 @@ void MainWindow::showRoundResult(bool victory)
         return;
 
     print(QString("Round ended. Victory=%1").arg(victory));
-    refreshSceneLabels();
-    refreshAllUnits();
+    refreshScene(RefreshAll);
 
     const int goldEarned = m_gameManager->getRoundGoldEarned();
     const int expEarned = m_gameManager->getRoundExpEarned();
