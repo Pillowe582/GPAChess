@@ -1,6 +1,8 @@
 #include "game_manager.h"
 #include "database_manager.h"
 #include "print.h"
+#include "entity/ally_behavior.h"
+#include "entity/enemy_behavior.h"
 
 #include <algorithm>
 #include <QRandomGenerator>
@@ -38,18 +40,20 @@ void GameManager::initialize()
             ChessInstance inst(pool[idx]);
             inst.deployed = false;
             inst.benchSlot = i;
-            m_player.ownedChesses.push_back(inst);
+            inst.behavior.reset(createAllyBehavior(inst.behaviorId));
+            m_player.ownedChesses.push_back(std::move(inst));
         }
     }
 
     m_enemies.clear();
     m_enemyConfigs.clear();
-    m_attackCooldownRemaining.clear();
     m_roundNumber = 1;
     m_maxTowerHp = BASE_TOWER_HP * m_towerHpMultiplier;
     m_towerHp = m_maxTowerHp;
     m_roundStartGold = 0;
     m_roundStartExp = 0;
+    m_weightedGpaSum = 0.0;
+    m_totalCredits = 0;
     m_phase = RoundPhase::Prepare;
     emit phaseChanged(m_phase);
 }
@@ -84,13 +88,25 @@ void GameManager::nextRound()
         return;
 
     transitionPhase(RoundPhase::Finish);
-    // 结算阶段：应用战斗中积累的金币/经验 + 每回合底薪
+    // 结算：应用积累收益 + 底薪 + 本回合学分绩
     m_player.gold += m_pendingGold + m_guaranteedGold;
     m_player.exp += m_pendingExp;
+    double roundGpa = getRoundGpa();
+    int credit = getRoundCredit(m_roundNumber);
+    m_weightedGpaSum += roundGpa * credit;
+    m_totalCredits += credit;
     m_pendingGold = 0;
     m_pendingExp = 0;
     resetUnitsForNextRound();
     ++m_roundNumber;
+
+    if (m_roundNumber > m_maxRounds)
+    {
+        double finalGpa = m_totalCredits > 0 ? m_weightedGpaSum / m_totalCredits : 0.0;
+        emit gameOver(finalGpa, m_player.gold, m_player.exp);
+        print(QString("Game over! Final GPA: %1").arg(finalGpa, 0, 'f', 2));
+        return;
+    }
     transitionPhase(RoundPhase::Prepare);
 }
 
@@ -100,7 +116,6 @@ void GameManager::resetUnitsForNextRound()
     for (auto &unit : m_player.ownedChesses)
         unit.resetStatus();
     m_enemies.clear();
-    m_attackCooldownRemaining.clear();
     m_towerAttackCooldown = 0.0;
     m_timeAccumulator = 0.0;
     print("All units reset for next round, formation preserved");
@@ -128,6 +143,7 @@ void GameManager::spawnEnemies(int roundNumber)
     {
         m_enemies.emplace_back(uidBase + static_cast<int>(i), picked[i], false, roundNumber);
         EnemyInstance &e = m_enemies.back();
+        e.behavior.reset(createEnemyBehavior(picked[i].behaviorId));
         e.posX = 1180.0 + (static_cast<double>(i % 3) * 140.0);
         e.posY = 160.0 + (static_cast<double>(i / 3) * 180.0);
     }
@@ -174,107 +190,82 @@ void GameManager::onTick()
 
 void GameManager::executeAttackCycle(double deltaSeconds)
 {
-    // 更新所有冷却
-    for (auto &kv : m_attackCooldownRemaining)
-    {
-        if (kv.second > 0.0)
-            kv.second = std::max(0.0, kv.second - deltaSeconds);
-    }
     if (m_towerAttackCooldown > 0.0)
         m_towerAttackCooldown = std::max(0.0, m_towerAttackCooldown - deltaSeconds);
 
     auto rng = QRandomGenerator::global();
-    // 随机偏移辅助
     auto jitter = [rng]() -> double
     { return (rng->generateDouble() - 0.5) * 30.0; };
 
-    // ====== 我方单位攻击 ======
+    // ====== 我方单位攻击（behavior 驱动） ======
     for (auto &ally : m_player.ownedChesses)
     {
-        if (!ally.isAlive || !ally.deployed)
+        if (!ally.isAlive || !ally.deployed || !ally.behavior)
+            continue;
+        ally.skillCooldownRemaining = std::max(0.0, ally.skillCooldownRemaining - deltaSeconds);
+        if (ally.skillCooldownRemaining > 0.0)
             continue;
 
-        int uid = ally.uuid;
-        double &cd = m_attackCooldownRemaining[uid];
-        if (cd > 0.0)
+        EnemyInstance *target = ally.behavior->findTarget(m_enemies, ally);
+        if (!target)
             continue;
 
-        auto it = std::find_if(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
-                               { return e.isAlive; });
-        if (it != m_enemies.end())
+        int dmg = ally.behavior->getDamage(ally);
+        target->takeDamage(dmg);
+        emit floatingText(QString("-%1").arg(dmg),
+                          target->posX + jitter(), target->posY - 20.0 + jitter(),
+                          ally.behavior->damageColor());
+        print(QString("Ally %1 hits Enemy %2 for %3 dmg").arg(ally.uuid).arg(target->uuid).arg(dmg));
+
+        if (!target->isAlive)
         {
-            int dmg = ally.atk.getFinal();
-            it->takeDamage(dmg);
-            // 角色A橙色，角色B绿色
-            QString allyColor = "#FF8C32";
-            if (ally.configId == 1)
-                allyColor = "#FF8C32";
-            else if (ally.configId == 2)
-                allyColor = "#64DC50";
-            emit floatingText(QString("-%1").arg(dmg),
-                              it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              allyColor);
-            print(QString("Ally %1 hits Enemy %2 for %3 dmg").arg(ally.uuid).arg(it->uuid).arg(dmg));
-
-            if (!it->isAlive)
-            {
-                // 10% 概率掉落金币
-                if (rng->bounded(10) == 0)
-                    m_pendingGold += it->baseGoldReward;
-                m_pendingExp += it->baseExpReward;
-                print(QString("Enemy %1 died").arg(it->uuid));
-            }
-
-            int atkSp = ally.attackSpeed.getFinal();
-            double interval = atkSp > 0 ? (1.0 / atkSp) : 1.0;
-            cd = interval;
+            if (rng->bounded(10) == 0)
+                m_pendingGold += target->baseGoldReward;
+            m_pendingExp += target->baseExpReward;
+            print(QString("Enemy %1 died").arg(target->uuid));
         }
+
+        ally.skillCooldownRemaining = ally.behavior->getInterval(ally);
     }
 
-    // ====== 敌方单位攻击 ======
+    // ====== 敌方单位攻击（behavior 驱动） ======
     for (auto &enemy : m_enemies)
     {
-        if (!enemy.isAlive)
+        if (!enemy.isAlive || !enemy.behavior)
+            continue;
+        enemy.skillCooldownRemaining = std::max(0.0, enemy.skillCooldownRemaining - deltaSeconds);
+        if (enemy.skillCooldownRemaining > 0.0)
             continue;
 
-        int uid = enemy.uuid;
-        double &cd = m_attackCooldownRemaining[uid];
-        if (cd > 0.0)
-            continue;
-
-        auto it = std::find_if(m_player.ownedChesses.begin(), m_player.ownedChesses.end(),
-                               [](const ChessInstance &c)
-                               { return c.isAlive && c.deployed; });
-        if (it != m_player.ownedChesses.end())
+        ChessInstance *target = enemy.behavior->findTarget(m_player.ownedChesses, enemy);
+        if (target)
         {
-            int dmg = enemy.atk.getFinal();
-            it->takeDamage(dmg);
+            int dmg = enemy.behavior->getDamage(enemy);
+            target->takeDamage(dmg);
             emit floatingText(QString("-%1").arg(dmg),
-                              it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              "#FFFFFF");
-            print(QString("Enemy %1 hits Ally %2").arg(enemy.uuid).arg(it->uuid));
-            if (!it->isAlive)
-                print(QString("Ally %1 died").arg(it->uuid));
+                              target->posX + jitter(), target->posY - 20.0 + jitter(),
+                              enemy.behavior->damageColor());
+            print(QString("Enemy %1 hits Ally %2 for %3 dmg").arg(enemy.uuid).arg(target->uuid).arg(dmg));
+            if (!target->isAlive)
+                print(QString("Ally %1 died").arg(target->uuid));
+            enemy.skillCooldownRemaining = enemy.behavior->getInterval(enemy);
         }
         else
         {
-            int dmg = enemy.atk.getFinal();
+            int dmg = enemy.behavior->getDamage(enemy);
             m_towerHp -= dmg;
             emit floatingText(QString("-%1").arg(dmg),
-                              80.0 + jitter(), 400.0 + jitter(),
-                              "#FFFFFF");
+                              80.0 + jitter(), 400.0 + jitter(), "#FFFFFF");
             print(QString("Enemy %1 hits tower for %2 dmg, towerHP=%3").arg(enemy.uuid).arg(dmg).arg(m_towerHp));
+            enemy.skillCooldownRemaining = enemy.behavior->getInterval(enemy);
         }
-
-        int atkSp = enemy.attackSpeed.getFinal();
-        double interval = atkSp > 0 ? (1.0 / atkSp) : 1.0;
-        cd = interval;
     }
 
     // ====== 塔攻击 ======
     if (m_towerAttackCooldown <= 0.0 && m_towerHp > 0)
     {
-        auto it = std::find_if(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
+        auto it = std::find_if(m_enemies.begin(), m_enemies.end(),
+                               [](const EnemyInstance &e)
                                { return e.isAlive; });
         if (it != m_enemies.end())
         {
@@ -283,10 +274,8 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             int baseDmg = 30;
             int dmg = static_cast<int>(baseDmg * multiplier);
             it->takeDamage(dmg);
-            // 塔伤害跳字：纯蓝色，无"塔"前缀
             emit floatingText(QString("-%1").arg(dmg),
-                              it->posX + jitter(), it->posY - 20.0 + jitter(),
-                              "#4696FF");
+                              it->posX + jitter(), it->posY - 20.0 + jitter(), "#4696FF");
             print(QString("Tower hits Enemy %1 for %2 dmg (x%3)").arg(it->uuid).arg(dmg).arg(multiplier, 0, 'f', 2));
 
             if (!it->isAlive)

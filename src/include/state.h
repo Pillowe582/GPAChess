@@ -5,6 +5,10 @@
 #include <QStringList>
 #include <vector>
 #include <atomic>
+#include <memory>
+
+#include "entity/ally_behavior.h"
+#include "entity/enemy_behavior.h"
 
 // 状态机阶段枚举
 enum class RoundPhase
@@ -69,6 +73,7 @@ public:
     float baseAttackSpeed = 1; // 基础攻速
     int maxMp = 0;             // 满蓝条上限
     double speed = 1.0;        // 移动速度
+    int behaviorId = 1;        // 行为ID
 
     QString description;
 };
@@ -135,6 +140,9 @@ public:
     double posX = 0;        // 战场上的 X 坐标 (仅在 deployed 时有效)
     double posY = 0;        // 战场上的 Y 坐标 (仅在 deployed 时有效)
     int targetEnemyId = -1; // 当前索敌的UUID，-1表示没有目标
+
+    std::unique_ptr<AllyBehavior> behavior; // 攻击行为策略
+    double skillCooldownRemaining = 0.0;    // 技能冷却剩余（秒）
 
     void calculateBaseStatsByStar()
     {
@@ -208,6 +216,9 @@ public:
 
     double posX = 0;
     double posY = 0;
+
+    std::unique_ptr<EnemyBehavior> behavior;
+    double skillCooldownRemaining = 0.0;
 
     void takeDamage(int rawDamage)
     {

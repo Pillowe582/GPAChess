@@ -51,6 +51,7 @@ void DatabaseManager::loadFromDb()
         chessConfigItem.speed = chessSqlQuery.value(11).toDouble();
         chessConfigItem.description = chessSqlQuery.value(12).toString();
         chessConfigItem.bonds = chessSqlQuery.value(13).toString().split(',', Qt::SkipEmptyParts);
+        chessConfigItem.behaviorId = chessSqlQuery.value(14).toInt();
         m_chessConfigs.push_back(chessConfigItem);
     }
     if (!hasChessData)
@@ -80,6 +81,7 @@ void DatabaseManager::loadFromDb()
         enemyConfigItem.description = enemySqlQuery.value(11).toString();
         enemyConfigItem.baseGoldReward = enemySqlQuery.value(12).toInt();
         enemyConfigItem.baseExpReward = enemySqlQuery.value(13).toInt();
+        enemyConfigItem.behaviorId = enemySqlQuery.value(14).toInt();
         m_enemyConfigs.push_back(enemyConfigItem);
     }
     if (!hasEnemyData)

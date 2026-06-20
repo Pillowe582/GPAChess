@@ -5,7 +5,6 @@
 #include <QTimer>
 #include <QRandomGenerator>
 #include <vector>
-#include <unordered_map>
 #include "state.h"
 
 #define GAME_TICK_INTERVAL_MS 50
@@ -59,7 +58,24 @@ public:
     int getRoundGoldEarned() const { return m_player.gold - m_roundStartGold; }
     int getRoundExpEarned() const { return m_player.exp - m_roundStartExp; }
 
-    /// 本回合学分绩 = (剩余塔血 / 最大塔血) × 4.0（模拟GPA）
+    /// 本回合学分值（第1回合2分，第2回合3分，第3回合5分）
+    static int getRoundCredit(int round)
+    {
+        switch (round)
+        {
+        case 1:
+            return 2;
+        case 2:
+            return 3;
+        case 3:
+            return 5;
+        default:
+            return 0;
+        }
+    }
+    int getMaxRounds() const { return m_maxRounds; }
+
+    /// 本回合学分绩 = (塔血% × 4.0) 满分4.0
     double getRoundGpa() const
     {
         if (m_maxTowerHp <= 0)
@@ -69,6 +85,13 @@ public:
             ratio = 0.0;
         return ratio * 4.0;
     }
+    /// 已完成回合的加权平均学分绩
+    double getAverageGpa() const
+    {
+        return m_totalCredits > 0 ? m_weightedGpaSum / m_totalCredits : 0.0;
+    }
+    /// 已完成回合的学分之和
+    int getPreviousCredits() const { return m_totalCredits; }
 
 signals:
     // 每次 tick 发出，用于驱动 UI 刷新
@@ -79,6 +102,8 @@ signals:
     void roundEnded(bool victory);
     /// 伤害/治疗跳字 (文字, 场景x, 场景y, #RRGGBB颜色)
     void floatingText(const QString &text, double x, double y, const QString &color);
+    /// 游戏结束（三回合打完）
+    void gameOver(double finalGpa, int totalGold, int totalExp);
 
 private slots:
     void onTick();
@@ -109,9 +134,10 @@ private:
     int m_guaranteedGold = 10;
     int m_pendingGold = 0; // 战斗中获得的临时金币
     int m_pendingExp = 0;  // 战斗中获得的临时经验
+    int m_maxRounds = 3;
+    double m_weightedGpaSum = 0.0; // Σ(学分×学分绩)
+    int m_totalCredits = 0;        // 已完成回合的学分之和
 
-    // 每 uuid 的攻击冷却剩余（秒）
-    std::unordered_map<int, double> m_attackCooldownRemaining;
     double m_towerAttackCooldown = 0.0; // 塔攻击冷却
     double m_timeAccumulator;
     quint32 m_gameSeed = 12345;

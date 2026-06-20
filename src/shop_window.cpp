@@ -2,6 +2,7 @@
 #include "ui_shop_window.h"
 #include "database_manager.h"
 #include "game_manager.h"
+#include "entity/ally_behavior.h"
 #include "print.h"
 
 #include <QRandomGenerator>
@@ -95,7 +96,8 @@ void ShopWindow::onPurchaseClicked()
     ChessInstance inst(cfg);
     inst.deployed = false;
     inst.benchSlot = slot;
-    assets.ownedChesses.push_back(inst);
+    inst.behavior.reset(createAllyBehavior(inst.behaviorId));
+    assets.ownedChesses.push_back(std::move(inst));
 
     print(QString("Purchased %1 for %2 gold, slot %3").arg(cfg.name).arg(cfg.cost).arg(slot));
 

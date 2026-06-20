@@ -264,7 +264,19 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="roundValue">
+           <widget class="QLabel" name="gpa">
+            <property name="font">
+             <font>
+              <pointsize>20</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>GPA: NaN</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="onBattleGroundColeCount">
             <property name="maximumSize">
              <size>
               <width>16777215</width>
@@ -277,19 +289,25 @@
              </font>
             </property>
             <property name="text">
-             <string>本课程学分：NaN</string>
+             <string>上场数：NaN</string>
             </property>
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="gpa">
+           <widget class="QLabel" name="goldCount">
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>100</height>
+             </size>
+            </property>
             <property name="font">
              <font>
               <pointsize>20</pointsize>
              </font>
             </property>
             <property name="text">
-             <string>GPA: NaN</string>
+             <string>上场数：NaN</string>
             </property>
            </widget>
           </item>

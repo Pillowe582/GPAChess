@@ -8,6 +8,7 @@
 #include <QPointF>
 
 class QGraphicsScene;
+class QGraphicsSimpleTextItem;
 class GameManager;
 class UnitGraphicsItem;
 class ShopWindow;
@@ -52,6 +53,7 @@ private:
     void refreshSceneLabels();
     void showSplashText(const QString &text, double x, double y, const QString &color);
     void showRoundResult(bool victory);
+    void showGameOver(double finalGpa, int totalGold, int totalExp);
     QString assetPath(const QString &relativePath) const;
 
     // 合法性判定
@@ -74,6 +76,7 @@ private:
     // 管理
     GameManager *m_gameManager = nullptr;
     QGraphicsScene *m_battleScene = nullptr;
+    QGraphicsSimpleTextItem *m_towerGpaText = nullptr;
     QMap<int, UnitGraphicsItem *> m_unitItems;
     ShopWindow *m_shopWindow = nullptr;
     DatabaseManager *m_database = nullptr;

@@ -129,6 +129,12 @@ void MainWindow::setupGameScene()
         QPen(QColor(80, 160, 255), 3.0),
         QBrush(QColor(40, 100, 220, 200)));
     tower->setZValue(5);
+    m_towerGpaText = m_battleScene->addSimpleText(QStringLiteral("4.0"));
+    m_towerGpaText->setBrush(Qt::black);
+    QFont gpaFont("Microsoft YaHei", 14);
+    gpaFont.setBold(true);
+    m_towerGpaText->setFont(gpaFont);
+    m_towerGpaText->setZValue(7);
 
     // 备战席区域背景
     const int horizontalMargin = 50;
@@ -254,6 +260,17 @@ void MainWindow::refreshBattleGround()
         text->setData(0, -1);
         text->setZValue(30);
         text->setPos(x - text->boundingRect().width() / 2.0, barY + barHeight + 2.0);
+    }
+
+    // 更新塔上的学分绩
+    if (m_towerGpaText && m_gameManager)
+    {
+        double gpa = m_gameManager->getRoundGpa();
+        m_towerGpaText->setText(QString::number(gpa, 'f', 1));
+        const double tx = 10.0, ts = 70.0;
+        const double ty = kBattlefieldHeight / 2.0 - ts / 2.0;
+        m_towerGpaText->setPos(tx + ts / 2.0 - m_towerGpaText->boundingRect().width() / 2.0,
+                               ty + ts / 2.0 - m_towerGpaText->boundingRect().height() / 2.0);
     }
 }
 
@@ -536,22 +553,20 @@ void MainWindow::refreshSceneLabels()
 {
     if (!m_gameManager)
         return;
+    int round = m_gameManager->getRoundNumber();
+    int credit = GameManager::getRoundCredit(round);
+    const auto &assets = m_gameManager->getPlayerAssets();
 
     if (auto *roundCount = findChild<QLabel *>("roundCount"))
-        roundCount->setText(QString("第%1门").arg(m_gameManager->getRoundNumber()));
+        roundCount->setText(QString("第%1门：占位，%2学分").arg(round).arg(credit));
     if (auto *totalCredit = findChild<QLabel *>("totalCredit"))
-        totalCredit->setText(QString("金币：%1").arg(m_gameManager->getPlayerAssets().gold));
-    if (auto *roundValue = findChild<QLabel *>("roundValue"))
-    {
-        const auto &assets = m_gameManager->getPlayerAssets();
-        roundValue->setText(QString("战场：%1/%2  备战：%3/%4")
-                                .arg(assets.deployedCount())
-                                .arg(PlayerAssets::maxBattlefield)
-                                .arg(assets.benchCount())
-                                .arg(PlayerAssets::maxBench));
-    }
+        totalCredit->setText(QString("累计学分：%1").arg(m_gameManager->getPreviousCredits()));
     if (auto *gpa = findChild<QLabel *>("gpa"))
-        gpa->setText(QString("塔血：%1").arg(m_gameManager->getTowerHp()));
+        gpa->setText(QString("均绩：%1/4.0").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
+    if (auto *roundValue = findChild<QLabel *>("roundValue"))
+        roundValue->setText(QString("战场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
+    if (auto *goldCount = findChild<QLabel *>("goldCount"))
+        goldCount->setText(QString("金币：%1").arg(assets.gold));
 }
 
 /// @brief 打开商店界面
@@ -650,13 +665,14 @@ void MainWindow::showRoundResult(bool victory)
                     "获得金币：%2\n"
                     "获得经验：%3\n"
                     "塔剩余血量：%4 / %5\n"
-                    "本回合学分绩：%6 / 4.0")
+                    "本回合学分绩：%6 / 4.0（%7学分）")
                     .arg(victory ? QStringLiteral("✨ 胜利！") : QStringLiteral("💀 失败..."))
                     .arg(goldEarned)
                     .arg(expEarned)
                     .arg(towerHp)
                     .arg(m_gameManager->getMaxTowerHp())
-                    .arg(gpa, 0, 'f', 2));
+                    .arg(gpa, 0, 'f', 2)
+                    .arg(GameManager::getRoundCredit(m_gameManager->getRoundNumber())));
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
 
@@ -694,6 +710,7 @@ void MainWindow::initGame()
             refreshBattleGround();
             refreshAllUnits(); });
         connect(m_gameManager, &GameManager::roundEnded, this, &MainWindow::showRoundResult);
+        connect(m_gameManager, &GameManager::gameOver, this, &MainWindow::showGameOver);
 
         connect(ui->startRoundButton, &QPushButton::clicked, this, [this]()
                 {
@@ -708,6 +725,25 @@ void MainWindow::initGame()
     m_gameManager->initialize();
     refreshAllUnits();
     refreshSceneLabels();
+}
+
+/// @brief 展示游戏结算对话框（三回合结束后）
+void MainWindow::showGameOver(double finalGpa, int totalGold, int totalExp)
+{
+    QMessageBox box(this);
+    box.setWindowTitle(QStringLiteral("游戏结算"));
+    box.setIcon(QMessageBox::Information);
+    box.setText(QString(
+                    "🎓 本学期结束！\n\n"
+                    "总学分绩：%1 / 10.0\n"
+                    "最终金币：%2\n"
+                    "最终经验：%3")
+                    .arg(finalGpa, 0, 'f', 2)
+                    .arg(totalGold)
+                    .arg(totalExp));
+    box.setStandardButtons(QMessageBox::Ok);
+    box.exec();
+    switchScene(Scene::EntryMenu);
 }
 
 MainWindow::~MainWindow()
