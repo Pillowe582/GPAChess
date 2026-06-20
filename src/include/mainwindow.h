@@ -66,10 +66,10 @@ private:
     static constexpr int kBenchAreaHeight = 180;      // 底部备战栏高度
     static constexpr int kBattlefieldMargin = 50;     // 战场部署区边界留白
     static constexpr int kDeployRightExtension = 200; // 部署区右侧额外扩展
-    static constexpr int kBenchSlotWidth = 158;
+    static constexpr int kBenchSlotWidth = 150;
     static constexpr int kBenchSlotHeight = 100;
-    static constexpr double kBenchSlotStartX = 20.0;
-    static constexpr double kBenchSlotStartY = kBattlefieldHeight + 50.0;
+    static constexpr double kBenchSlotStartX = 65.0;
+    static constexpr double kBenchSlotStartY = kBattlefieldHeight + 40.0;
 
     // 管理
     GameManager *m_gameManager = nullptr;

@@ -6,20 +6,15 @@
 #include <QRandomGenerator>
 
 GameManager::GameManager(QObject *parent)
-    : QObject(parent), m_tickTimer(new QTimer(this)), m_tickIntervalMs(50),
-      m_roundNumber(1), m_phase(RoundPhase::Prepare), m_towerHp(100),
+    : QObject(parent), m_tickTimer(new QTimer(this)), m_tickIntervalMs(GAME_TICK_INTERVAL_MS),
+      m_roundNumber(1), m_phase(RoundPhase::Prepare), m_towerHp(BASE_TOWER_HP * m_towerHpMultiplier),
       m_timeAccumulator(0.0), m_gameSeed(12345), m_rng(12345)
 {
     m_tickTimer->setInterval(m_tickIntervalMs);
     connect(m_tickTimer, &QTimer::timeout, this, &GameManager::onTick);
 }
 
-GameManager::~GameManager()
-{
-    if (m_tickTimer->isActive())
-        m_tickTimer->stop();
-}
-
+/// @brief 整局游戏初始化
 void GameManager::initialize()
 {
     // 生成本局随机种子
@@ -32,15 +27,17 @@ void GameManager::initialize()
     m_player.exp = 0;
     m_player.ownedChesses.clear();
 
-    // 开局免费给1个角色A放在备战席（从数据库读取）
+    // 开局免费给n个随机角色放在备战席
     if (m_database)
     {
-        const ChessConfig *starterCfg = m_database->findChess(1);
-        if (starterCfg)
+        const auto &pool = m_database->allChessConfigs();
+        const int starterCount = 2;
+        for (int i = 0; i < starterCount && !pool.empty(); ++i)
         {
-            ChessInstance inst(*starterCfg);
+            int idx = m_rng.bounded(static_cast<int>(pool.size()));
+            ChessInstance inst(pool[idx]);
             inst.deployed = false;
-            inst.benchSlot = 0;
+            inst.benchSlot = i;
             m_player.ownedChesses.push_back(inst);
         }
     }
@@ -49,7 +46,7 @@ void GameManager::initialize()
     m_enemyConfigs.clear();
     m_attackCooldownRemaining.clear();
     m_roundNumber = 1;
-    m_maxTowerHp = 100;
+    m_maxTowerHp = BASE_TOWER_HP * m_towerHpMultiplier;
     m_towerHp = m_maxTowerHp;
     m_roundStartGold = 0;
     m_roundStartExp = 0;
@@ -57,6 +54,8 @@ void GameManager::initialize()
     emit phaseChanged(m_phase);
 }
 
+/// @brief 轮次开始
+/// @param roundNumber
 void GameManager::startRound(int roundNumber)
 {
     m_roundNumber = roundNumber;
@@ -64,32 +63,38 @@ void GameManager::startRound(int roundNumber)
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
     // 每回合塔满血
-    m_maxTowerHp = 100;
-    m_towerHp = m_maxTowerHp;
+    m_towerHp = BASE_TOWER_HP * m_towerHpMultiplier;
     m_towerAttackCooldown = 0.0;
     transitionPhase(RoundPhase::Combat);
     spawnEnemies(m_roundNumber);
     m_tickTimer->start();
 }
 
+/// @brief 轮次结束
 void GameManager::stopRound()
 {
     if (m_tickTimer->isActive())
         m_tickTimer->stop();
 }
 
+/// @brief 处理从结算界面进入下一轮准备阶段的过渡
 void GameManager::nextRound()
 {
-    // ShowResult → Finish → Prepare
     if (m_phase != RoundPhase::ShowResult)
         return;
 
     transitionPhase(RoundPhase::Finish);
+    // 结算阶段：应用战斗中积累的金币/经验 + 每回合底薪
+    m_player.gold += m_pendingGold + m_guaranteedGold;
+    m_player.exp += m_pendingExp;
+    m_pendingGold = 0;
+    m_pendingExp = 0;
     resetUnitsForNextRound();
     ++m_roundNumber;
     transitionPhase(RoundPhase::Prepare);
 }
 
+/// @brief 重置当前轮次所有单位
 void GameManager::resetUnitsForNextRound()
 {
     for (auto &unit : m_player.ownedChesses)
@@ -98,10 +103,11 @@ void GameManager::resetUnitsForNextRound()
     m_attackCooldownRemaining.clear();
     m_towerAttackCooldown = 0.0;
     m_timeAccumulator = 0.0;
-    m_player.gold += 10;
-    print("All units reset, enemies cleared, +10 gold for next round");
+    print("All units reset for next round, formation preserved");
 }
 
+/// @brief 过渡到新的回合阶段，顺便发出信号
+/// @param newPhase
 void GameManager::transitionPhase(RoundPhase newPhase)
 {
     if (m_phase == newPhase)
@@ -214,8 +220,8 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             {
                 // 10% 概率掉落金币
                 if (rng->bounded(10) == 0)
-                    m_player.gold += it->baseGoldReward;
-                m_player.exp += it->baseExpReward;
+                    m_pendingGold += it->baseGoldReward;
+                m_pendingExp += it->baseExpReward;
                 print(QString("Enemy %1 died").arg(it->uuid));
             }
 
@@ -286,8 +292,8 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             if (!it->isAlive)
             {
                 if (rng->bounded(10) == 0)
-                    m_player.gold += it->baseGoldReward;
-                m_player.exp += it->baseExpReward;
+                    m_pendingGold += it->baseGoldReward;
+                m_pendingExp += it->baseExpReward;
                 print(QString("Tower killed Enemy %1").arg(it->uuid));
             }
             m_towerAttackCooldown = 1.5;
@@ -395,6 +401,9 @@ void GameManager::checkAndMergeStars()
     }
 }
 
+/// @brief 卖出单位
+/// @param uuid
+/// @return 卖出获得的金币数量
 int GameManager::sellUnit(int uuid)
 {
     auto &units = m_player.ownedChesses;
@@ -405,13 +414,14 @@ int GameManager::sellUnit(int uuid)
             int star = units[i].starLevel;
             int cost = units[i].cost;
             int refund = cost;
+
+            // 卖出价格 = 基础费用 × (2^星级 - 1)
             for (int s = 1; s < star; ++s)
                 refund *= 3;
 
             m_player.gold += refund;
-            print(QString("Sold %1★%2 (uuid=%3) for %4 gold")
+            print(QString("Sold %1★%2for %4 gold")
                       .arg(star)
-                      .arg(units[i].name)
                       .arg(uuid)
                       .arg(refund));
 
@@ -420,4 +430,9 @@ int GameManager::sellUnit(int uuid)
         }
     }
     return 0;
+}
+GameManager::~GameManager()
+{
+    if (m_tickTimer->isActive())
+        m_tickTimer->stop();
 }

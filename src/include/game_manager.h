@@ -6,9 +6,10 @@
 #include <QRandomGenerator>
 #include <vector>
 #include <unordered_map>
-
 #include "state.h"
 
+#define GAME_TICK_INTERVAL_MS 50
+#define BASE_TOWER_HP 10000
 class DatabaseManager;
 
 class GameManager : public QObject
@@ -92,7 +93,7 @@ private:
 
 private:
     QTimer *m_tickTimer;
-    int m_tickIntervalMs;
+    int m_tickIntervalMs = GAME_TICK_INTERVAL_MS;
     int m_roundNumber;
     RoundPhase m_phase;
 
@@ -101,9 +102,13 @@ private:
     std::vector<EnemyConfig> m_enemyConfigs; // storage for configs lifetime
 
     int m_towerHp;
-    int m_maxTowerHp = 100;
+    int m_maxTowerHp = BASE_TOWER_HP;
+    double m_towerHpMultiplier = 1.0;
     int m_roundStartGold = 0;
     int m_roundStartExp = 0;
+    int m_guaranteedGold = 10;
+    int m_pendingGold = 0; // 战斗中获得的临时金币
+    int m_pendingExp = 0;  // 战斗中获得的临时经验
 
     // 每 uuid 的攻击冷却剩余（秒）
     std::unordered_map<int, double> m_attackCooldownRemaining;

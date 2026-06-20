@@ -155,15 +155,6 @@ void MainWindow::setupGameScene()
                                                 QBrush(QColor("#00ddff") ^ 0.1));
     deployBorder->setZValue(-5);
 
-    // 备战席标签
-    auto *benchLabel = m_battleScene->addSimpleText(QStringLiteral("备战席"));
-    benchLabel->setBrush(QColor("#ffffff"));
-    QFont labelFont("Microsoft YaHei", 14);
-    labelFont.setBold(true);
-    benchLabel->setFont(labelFont);
-    benchLabel->setPos(10.0, benchY + 4.0);
-    benchLabel->setZValue(1);
-
     // 备战席席位
     for (int i = 0; i < PlayerAssets::maxBench; ++i)
     {
@@ -563,10 +554,7 @@ void MainWindow::refreshSceneLabels()
         gpa->setText(QString("塔血：%1").arg(m_gameManager->getTowerHp()));
 }
 
-// ============================================================================
-// 商店
-// ============================================================================
-
+/// @brief 打开商店界面
 void MainWindow::onShopOpenClicked()
 {
     if (!m_gameManager || !m_database)
@@ -577,11 +565,11 @@ void MainWindow::onShopOpenClicked()
     if (!m_shopWindow)
     {
         m_shopWindow = new ShopWindow(m_database, m_gameManager, this);
-        connect(m_shopWindow, &ShopWindow::shopClosed, this, [this]()
-                {
+        connect(m_shopWindow, &ShopWindow::shopClosed, this, [this]() { // 绑定商店关闭时到刷新棋子状态
             m_gameManager->checkAndMergeStars();
             refreshAllUnits();
-            refreshSceneLabels(); });
+            refreshSceneLabels();
+        });
     }
     m_shopWindow->refreshShop();
     m_shopWindow->show();
@@ -610,8 +598,8 @@ void MainWindow::showSplashText(const QString &text, double x, double y, const Q
 
     auto *shadow = m_battleScene->addSimpleText(text);
     shadow->setFont(ftFont);
-    shadow->setBrush(QColor(0, 0, 0, 160));
-    shadow->setPos(font->pos() + QPointF(1, 1));
+    shadow->setBrush(QColor("#000000") ^ 0.6);
+    shadow->setPos(font->pos() + QPointF(2, 2)); // 阴影稍微偏移
     shadow->setTransformOriginPoint(shadow->boundingRect().center());
     shadow->setZValue(499);
     shadow->setScale(4.0);
@@ -721,8 +709,6 @@ void MainWindow::initGame()
     refreshAllUnits();
     refreshSceneLabels();
 }
-
-
 
 MainWindow::~MainWindow()
 {
