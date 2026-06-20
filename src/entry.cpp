@@ -546,9 +546,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
     refreshAllUnits();
 }
 
-// ============================================================================
-// 标签刷新
-// ============================================================================
+/// @brief 刷新场景标签
 void MainWindow::refreshSceneLabels()
 {
     if (!m_gameManager)
@@ -558,13 +556,13 @@ void MainWindow::refreshSceneLabels()
     const auto &assets = m_gameManager->getPlayerAssets();
 
     if (auto *roundCount = findChild<QLabel *>("roundCount"))
-        roundCount->setText(QString("第%1门：占位，%2学分").arg(round).arg(credit));
+        roundCount->setText(QString("第%1门：XXX, %2cr").arg(round).arg(credit));
     if (auto *totalCredit = findChild<QLabel *>("totalCredit"))
-        totalCredit->setText(QString("累计学分：%1").arg(m_gameManager->getPreviousCredits()));
+        totalCredit->setText(QString("已修学分：%1").arg(m_gameManager->getPreviousCredits()));
     if (auto *gpa = findChild<QLabel *>("gpa"))
-        gpa->setText(QString("均绩：%1/4.0").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
+        gpa->setText(QString("GPA：%1/4.0").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
     if (auto *roundValue = findChild<QLabel *>("roundValue"))
-        roundValue->setText(QString("战场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
+        roundValue->setText(QString("已上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
     if (auto *goldCount = findChild<QLabel *>("goldCount"))
         goldCount->setText(QString("金币：%1").arg(assets.gold));
 }
@@ -697,7 +695,7 @@ void MainWindow::initGame()
             m_database = new DatabaseManager(
                 QCoreApplication::applicationDirPath() + "/assets/entities", this);
         m_gameManager->setDatabase(m_database);
-        connect(m_gameManager, &GameManager::floatingText, this, &MainWindow::showSplashText);
+        connect(m_gameManager, &GameManager::splashText, this, &MainWindow::showSplashText);
         connect(m_gameManager, &GameManager::phaseChanged, this, [this](RoundPhase p)
                 {
             print(QString("Phase changed: %1").arg(static_cast<int>(p)));
@@ -706,9 +704,8 @@ void MainWindow::initGame()
             refreshSceneLabels();
             refreshAllUnits(); });
         connect(m_gameManager, &GameManager::tick, this, [this]()
-                {
-            refreshBattleGround();
-            refreshAllUnits(); });
+                { refreshBattleGround();
+                    refreshAllUnits(); });
         connect(m_gameManager, &GameManager::roundEnded, this, &MainWindow::showRoundResult);
         connect(m_gameManager, &GameManager::gameOver, this, &MainWindow::showGameOver);
 
@@ -727,20 +724,17 @@ void MainWindow::initGame()
     refreshSceneLabels();
 }
 
-/// @brief 展示游戏结算对话框（三回合结束后）
-void MainWindow::showGameOver(double finalGpa, int totalGold, int totalExp)
+/// @brief 展示本局结算对话框
+/// @param finalGpa 最终GPA
+void MainWindow::showGameOver(double finalGpa)
 {
     QMessageBox box(this);
     box.setWindowTitle(QStringLiteral("游戏结算"));
     box.setIcon(QMessageBox::Information);
     box.setText(QString(
                     "🎓 本学期结束！\n\n"
-                    "总学分绩：%1 / 10.0\n"
-                    "最终金币：%2\n"
-                    "最终经验：%3")
-                    .arg(finalGpa, 0, 'f', 2)
-                    .arg(totalGold)
-                    .arg(totalExp));
+                    "GPA：%1")
+                    .arg(finalGpa, 0, 'f', 2));
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
     switchScene(Scene::EntryMenu);

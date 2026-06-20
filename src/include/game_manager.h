@@ -101,9 +101,9 @@ signals:
     // 回合结束，参数为是否我方胜利
     void roundEnded(bool victory);
     /// 伤害/治疗跳字 (文字, 场景x, 场景y, #RRGGBB颜色)
-    void floatingText(const QString &text, double x, double y, const QString &color);
-    /// 游戏结束（三回合打完）
-    void gameOver(double finalGpa, int totalGold, int totalExp);
+    void splashText(const QString &text, double x, double y, const QString &color);
+    /// 游戏结束
+    void gameOver(double finalGpa);
 
 private slots:
     void onTick();

@@ -58,7 +58,7 @@ void GameManager::initialize()
     emit phaseChanged(m_phase);
 }
 
-/// @brief 轮次开始
+/// @brief 回合开始
 /// @param roundNumber
 void GameManager::startRound(int roundNumber)
 {
@@ -74,7 +74,7 @@ void GameManager::startRound(int roundNumber)
     m_tickTimer->start();
 }
 
-/// @brief 轮次结束
+/// @brief 回合结束
 void GameManager::stopRound()
 {
     if (m_tickTimer->isActive())
@@ -103,7 +103,7 @@ void GameManager::nextRound()
     if (m_roundNumber > m_maxRounds)
     {
         double finalGpa = m_totalCredits > 0 ? m_weightedGpaSum / m_totalCredits : 0.0;
-        emit gameOver(finalGpa, m_player.gold, m_player.exp);
+        emit gameOver(finalGpa);
         print(QString("Game over! Final GPA: %1").arg(finalGpa, 0, 'f', 2));
         return;
     }
@@ -212,9 +212,9 @@ void GameManager::executeAttackCycle(double deltaSeconds)
 
         int dmg = ally.behavior->getDamage(ally);
         target->takeDamage(dmg);
-        emit floatingText(QString("-%1").arg(dmg),
-                          target->posX + jitter(), target->posY - 20.0 + jitter(),
-                          ally.behavior->damageColor());
+        emit splashText(QString("-%1").arg(dmg),
+                        target->posX + jitter(), target->posY - 20.0 + jitter(),
+                        ally.behavior->damageColor());
         print(QString("Ally %1 hits Enemy %2 for %3 dmg").arg(ally.uuid).arg(target->uuid).arg(dmg));
 
         if (!target->isAlive)
@@ -242,9 +242,9 @@ void GameManager::executeAttackCycle(double deltaSeconds)
         {
             int dmg = enemy.behavior->getDamage(enemy);
             target->takeDamage(dmg);
-            emit floatingText(QString("-%1").arg(dmg),
-                              target->posX + jitter(), target->posY - 20.0 + jitter(),
-                              enemy.behavior->damageColor());
+            emit splashText(QString("-%1").arg(dmg),
+                            target->posX + jitter(), target->posY - 20.0 + jitter(),
+                            enemy.behavior->damageColor());
             print(QString("Enemy %1 hits Ally %2 for %3 dmg").arg(enemy.uuid).arg(target->uuid).arg(dmg));
             if (!target->isAlive)
                 print(QString("Ally %1 died").arg(target->uuid));
@@ -254,8 +254,8 @@ void GameManager::executeAttackCycle(double deltaSeconds)
         {
             int dmg = enemy.behavior->getDamage(enemy);
             m_towerHp -= dmg;
-            emit floatingText(QString("-%1").arg(dmg),
-                              80.0 + jitter(), 400.0 + jitter(), "#FFFFFF");
+            emit splashText(QString("-%1").arg(dmg),
+                            80.0 + jitter(), 400.0 + jitter(), "#FFFFFF");
             print(QString("Enemy %1 hits tower for %2 dmg, towerHP=%3").arg(enemy.uuid).arg(dmg).arg(m_towerHp));
             enemy.skillCooldownRemaining = enemy.behavior->getInterval(enemy);
         }
@@ -274,8 +274,8 @@ void GameManager::executeAttackCycle(double deltaSeconds)
             int baseDmg = 30;
             int dmg = static_cast<int>(baseDmg * multiplier);
             it->takeDamage(dmg);
-            emit floatingText(QString("-%1").arg(dmg),
-                              it->posX + jitter(), it->posY - 20.0 + jitter(), "#4696FF");
+            emit splashText(QString("-%1").arg(dmg),
+                            it->posX + jitter(), it->posY - 20.0 + jitter(), "#4696FF");
             print(QString("Tower hits Enemy %1 for %2 dmg (x%3)").arg(it->uuid).arg(dmg).arg(multiplier, 0, 'f', 2));
 
             if (!it->isAlive)

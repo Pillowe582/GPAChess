@@ -53,7 +53,7 @@ private:
     void refreshSceneLabels();
     void showSplashText(const QString &text, double x, double y, const QString &color);
     void showRoundResult(bool victory);
-    void showGameOver(double finalGpa, int totalGold, int totalExp);
+    void showGameOver(double finalGpa);
     QString assetPath(const QString &relativePath) const;
 
     // 合法性判定
