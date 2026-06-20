@@ -11,7 +11,7 @@ class DatabaseManager : public QObject
 {
     Q_OBJECT
 public:
-    explicit DatabaseManager(const QString &dataDir, QObject *parent = nullptr);
+    explicit DatabaseManager(const QString &appDir, QObject *parent = nullptr);
 
     const std::vector<ChessConfig> &allChessConfigs() const { return m_chessConfigs; }
     const std::vector<EnemyConfig> &allEnemyConfigs() const { return m_enemyConfigs; }

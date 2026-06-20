@@ -3,11 +3,11 @@
 #include <QSqlQuery>
 #include <QSqlError>
 
-DatabaseManager::DatabaseManager(const QString &dataDir, QObject *parent)
+DatabaseManager::DatabaseManager(const QString &appDir, QObject *parent)
     : QObject(parent)
 {
-    openDb(dataDir + "/role.db", "role_conn", m_chessDb);
-    openDb(dataDir + "/enemy.db", "enemy_conn", m_enemyDb);
+    openDb(appDir + "/assets/database/role.db", "role_conn", m_chessDb);
+    openDb(appDir + "/assets/database/enemy.db", "enemy_conn", m_enemyDb);
     loadFromDb();
 }
 

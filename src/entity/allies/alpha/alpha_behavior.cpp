@@ -1,13 +1,13 @@
 #include "alpha_behavior.h"
 #include "state.h"
+#include "render/renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
 void AlphaAlly::tick(double dt, ChessInstance &self,
                      std::vector<EnemyInstance> &enemies,
-                     std::vector<DrawCmd> &draws,
-                     int &pendingGold, int &pendingExp,
-                     const SplashFn &splash)
+                     Renderer &renderer,
+                     int &pendingGold, int &pendingExp)
 {
     auto rng = QRandomGenerator::global();
     auto jitter = [rng]() -> double
@@ -36,10 +36,10 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
                 {
                     int dmg = self.atk.getFinal();
                     enemy.takeDamage(dmg);
-                    splash(QString("-%1").arg(dmg),
-                           enemy.posX + jitter(),
-                           enemy.posY - 20 + jitter(),
-                           QStringLiteral("#FF8C32"));
+                    renderer.queueSplash(QString("-%1").arg(dmg),
+                                         enemy.posX + jitter(),
+                                         enemy.posY - 20 + jitter(),
+                                         QColor("#FF8C32"));
                     if (!enemy.isAlive)
                     {
                         if (rng->bounded(10) == 0)
@@ -58,17 +58,10 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
             m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
         }
 
-        // 渲染：旋转矩形
-        DrawCmd cmd;
-        cmd.kind = DrawCmd::RotatedRect;
-        cmd.x = self.posX;
-        cmd.y = self.posY;
-        cmd.param1 = 55.0; // 半宽
-        cmd.param2 = 8.0;  // 半高
-        cmd.angle = m_weapon.angle;
-        cmd.color = QColor(255, 140, 50, 200);
-        cmd.zValue = 90;
-        draws.push_back(cmd);
+        // 渲染：旋转矩形（110×16，居中于自身位置）
+        renderer.queueRect(self.posX, self.posY, 110.0, 16.0,
+                           QColor(255, 140, 50, 200), 90,
+                           m_weapon.angle * 180.0 / 3.14159265, true);
         return;
     }
 

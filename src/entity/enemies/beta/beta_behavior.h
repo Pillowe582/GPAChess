@@ -8,9 +8,8 @@ class BetaEnemy : public EnemyBehavior
 public:
     void tick(double dt, EnemyInstance &self,
               std::vector<ChessInstance> &allies,
-              std::vector<DrawCmd> &draws,
-              int &towerHp, int &pendingGold, int &pendingExp,
-              const SplashFn &splash) override;
+              Renderer &renderer,
+              int &towerHp, int &pendingGold, int &pendingExp) override;
 
 private:
     struct Bullet

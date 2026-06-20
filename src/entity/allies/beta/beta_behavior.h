@@ -8,9 +8,8 @@ class BetaAlly : public AllyBehavior
 public:
     void tick(double dt, ChessInstance &self,
               std::vector<EnemyInstance> &enemies,
-              std::vector<DrawCmd> &draws,
-              int &pendingGold, int &pendingExp,
-              const SplashFn &splash) override;
+              Renderer &renderer,
+              int &pendingGold, int &pendingExp) override;
 
 private:
     // ---- 此角色自有的子弹数据 ----

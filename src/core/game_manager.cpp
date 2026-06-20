@@ -3,17 +3,23 @@
 #include "print.h"
 #include "entity/ally_behavior.h"
 #include "entity/enemy_behavior.h"
+#include "tower/tower_behavior.h"
+#include "render/renderer.h"
 
 #include <algorithm>
 #include <cmath>
 #include <QRandomGenerator>
+#include <QCoreApplication>
 
 GameManager::GameManager(QObject *parent)
-    : QObject(parent), m_tickTimer(new QTimer(this)), m_tickIntervalMs(GAME_TICK_INTERVAL_MS),
-      m_roundNumber(1), m_phase(RoundPhase::Prepare), m_towerHp(BASE_TOWER_HP * m_towerHpMultiplier),
+    : QObject(parent), m_tickTimer(new QTimer(this)),
+      m_roundNumber(1), m_phase(RoundPhase::Prepare),
       m_timeAccumulator(0.0), m_gameSeed(12345), m_rng(12345)
 {
-    m_tickTimer->setInterval(m_tickIntervalMs);
+    m_towerHp = BASE_TOWER_HP * m_towerHpMultiplier;
+    m_towerMaxHp = m_towerHp;
+    m_towerBehavior.reset(createTowerBehavior());
+    m_tickTimer->setInterval(GAME_TICK_INTERVAL_MS);
     connect(m_tickTimer, &QTimer::timeout, this, &GameManager::onTick);
 }
 
@@ -21,10 +27,19 @@ GameManager::GameManager(QObject *parent)
 /// @brief 整局游戏初始化
 void GameManager::initialize()
 {
+    print("开始初始化游戏管理器");
+    /// 设置图鉴数据库引用
+    m_database = new DatabaseManager(QCoreApplication::applicationDirPath(), this);
+    if (!m_database)
+    {
+        print("数据库管理器初始化失败！");
+        return;
+    }
+    print("数据库管理器初始化成功");
     // 生成本局随机种子
     m_gameSeed = QRandomGenerator::global()->generate();
     m_rng.seed(m_gameSeed);
-    print(QString("Game seed: %1").arg(m_gameSeed));
+    print(QString("Seed: %1").arg(m_gameSeed));
 
     // 重置玩家资源
     m_player.gold = 10;
@@ -32,26 +47,25 @@ void GameManager::initialize()
     m_player.ownedChesses.clear();
 
     // 开局免费给n个随机角色放在备战席
-    if (m_database)
+
+    const auto &pool = m_database->allChessConfigs();
+    const int starterCount = 2;
+    for (int i = 0; i < starterCount && !pool.empty(); ++i)
     {
-        const auto &pool = m_database->allChessConfigs();
-        const int starterCount = 2;
-        for (int i = 0; i < starterCount && !pool.empty(); ++i)
-        {
-            int idx = m_rng.bounded(static_cast<int>(pool.size()));
-            ChessInstance inst(pool[idx]);
-            inst.deployed = false;
-            inst.benchSlot = i;
-            inst.behavior.reset(createAllyBehavior(inst.behaviorId));
-            m_player.ownedChesses.push_back(std::move(inst));
-        }
+        int idx = m_rng.bounded(static_cast<int>(pool.size()));
+        ChessInstance inst(pool[idx]);
+        inst.deployed = false;
+        inst.benchSlot = i;
+        inst.behavior.reset(createAllyBehavior(inst.behaviorId));
+        m_player.ownedChesses.push_back(std::move(inst));
     }
 
     m_enemies.clear();
     m_enemyConfigs.clear();
     m_roundNumber = 1;
-    m_maxTowerHp = BASE_TOWER_HP * m_towerHpMultiplier;
-    m_towerHp = m_maxTowerHp;
+    m_towerHp = BASE_TOWER_HP * m_towerHpMultiplier;
+    m_towerMaxHp = m_towerHp;
+    m_towerAttackCooldown = 0.0;
     m_roundStartGold = 0;
     m_roundStartExp = 0;
     m_weightedGpaSum = 0.0;
@@ -70,10 +84,9 @@ void GameManager::startRound(int roundNumber)
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
     // 每回合塔满血
-    m_towerHp = BASE_TOWER_HP * m_towerHpMultiplier;
+    m_towerHp = m_towerMaxHp;
     m_towerAttackCooldown = 0.0;
     m_timeAccumulator = 0.0;
-    m_tickProgress = 0.0;
 
     // 快照所有已部署单位的战场位置，用于回合结束后复位
     for (auto &u : m_player.ownedChesses)
@@ -87,6 +100,17 @@ void GameManager::startRound(int roundNumber)
 
     transitionPhase(RoundPhase::Combat);
     spawnEnemies(m_roundNumber);
+
+    // ====== 通知所有 behavior：回合开始 ======
+    for (auto &u : m_player.ownedChesses)
+        if (u.behavior)
+            u.behavior->onStart();
+    for (auto &e : m_enemies)
+        if (e.behavior)
+            e.behavior->onStart();
+    if (m_towerBehavior)
+        m_towerBehavior->onStart();
+
     m_tickTimer->start();
 }
 
@@ -95,7 +119,8 @@ void GameManager::stopRound()
 {
     if (m_tickTimer->isActive())
         m_tickTimer->stop();
-    m_pendingDraws.clear(); // 清除子弹/武器等临时渲染元素
+    if (m_renderer)
+        m_renderer->clearAll();
 }
 
 /// @brief 处理从结算界面进入下一轮准备阶段的过渡
@@ -138,8 +163,6 @@ void GameManager::resetUnitsForNextRound()
         {
             unit.posX = unit.savedPosX;
             unit.posY = unit.savedPosY;
-            unit.prevPosX = unit.posX;
-            unit.prevPosY = unit.posY;
         }
     }
     m_enemies.clear();
@@ -203,12 +226,8 @@ std::vector<EnemyConfig> GameManager::pickRandomEnemies(int count, int roundNumb
 void GameManager::onTick()
 {
     // delta in seconds
-    double delta = m_tickIntervalMs / 1000.0;
+    double delta = GAME_TICK_INTERVAL_MS / 1000.0;
     m_timeAccumulator += delta;
-
-    // 计算插值进度：用于渲染时在两 tick 间做位置 lerp
-    m_tickProgress = std::fmod(m_timeAccumulator, delta) / delta;
-
     executeAttackCycle(delta);
     emit tick();
 
@@ -224,38 +243,18 @@ void GameManager::onTick()
 // % 攻击循环
 void GameManager::executeAttackCycle(double deltaSeconds)
 {
-    // ====== 塔攻击冷却 ======
-    if (m_towerAttackCooldown > 0.0)
-        m_towerAttackCooldown = std::max(0.0, m_towerAttackCooldown - deltaSeconds);
+    if (!m_renderer)
+        return;
 
-    auto rng = QRandomGenerator::global();
-    auto jitter = [rng]() -> double
-    { return (rng->generateDouble() - 0.5) * 30.0; };
-    auto splashFn = [this](const QString &t, double x, double y, const QString &c)
-    { emit splashText(t, x, y, c); };
-
-    // 收集所有渲染指令
-    std::vector<DrawCmd> draws;
-
-    // —— 保存上一 tick 位置用于插值平滑 ——
-    for (auto &ally : m_player.ownedChesses)
-    {
-        ally.prevPosX = ally.posX;
-        ally.prevPosY = ally.posY;
-    }
-    for (auto &enemy : m_enemies)
-    {
-        enemy.prevPosX = enemy.posX;
-        enemy.prevPosY = enemy.posY;
-    }
+    m_renderer->beginFrame();
 
     // ====== 我方单位：委托给各自 behavior ======
     for (auto &ally : m_player.ownedChesses)
     {
         if (!ally.isAlive || !ally.deployed || !ally.behavior)
             continue;
-        ally.behavior->tick(deltaSeconds, ally, m_enemies, draws,
-                            m_pendingGold, m_pendingExp, splashFn);
+        ally.behavior->tick(deltaSeconds, ally, m_enemies, *m_renderer,
+                            m_pendingGold, m_pendingExp);
     }
 
     // ====== 敌方单位：委托给各自 behavior ======
@@ -264,37 +263,20 @@ void GameManager::executeAttackCycle(double deltaSeconds)
         if (!enemy.isAlive || !enemy.behavior)
             continue;
         enemy.behavior->tick(deltaSeconds, enemy,
-                             m_player.ownedChesses, draws,
-                             m_towerHp, m_pendingGold, m_pendingExp, splashFn);
+                             m_player.ownedChesses, *m_renderer,
+                             m_towerHp, m_pendingGold, m_pendingExp);
     }
 
-    // ====== 塔攻击 ======
-    if (m_towerAttackCooldown <= 0.0 && m_towerHp > 0)
+    // ====== 塔：委托给 TowerBehavior ======
+    if (m_towerBehavior && m_towerHp > 0)
     {
-        auto it = std::find_if(m_enemies.begin(), m_enemies.end(),
-                               [](const EnemyInstance &e)
-                               { return e.isAlive; });
-        if (it != m_enemies.end())
-        {
-            double hpRatio = static_cast<double>(m_towerHp) / static_cast<double>(m_maxTowerHp);
-            int dmg = static_cast<int>(30 * (1.0 + (1.0 - hpRatio) * 3.0));
-            it->takeDamage(dmg);
-            emit splashText(QString("-%1").arg(dmg),
-                            it->posX + jitter(),
-                            it->posY - 20 + jitter(),
-                            QStringLiteral("#4696FF"));
-            if (!it->isAlive)
-            {
-                if (rng->bounded(10) == 0)
-                    m_pendingGold += it->baseGoldReward;
-                m_pendingExp += it->baseExpReward;
-            }
-            m_towerAttackCooldown = 1.5;
-        }
+        m_towerBehavior->tick(deltaSeconds, m_towerHp, m_towerMaxHp,
+                              m_towerAttackCooldown, m_enemies, *m_renderer,
+                              m_pendingGold, m_pendingExp);
     }
 
-    // 渲染数据暂存供 refreshBattleGround 使用
-    m_pendingDraws = std::move(draws);
+    // 一次性渲染所有排队指令
+    m_renderer->flush();
 }
 
 // % 检查战斗结束
@@ -320,7 +302,35 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     outVictory = false;
     return false;
 }
+// % 商店逻辑
+void GameManager::openShop()
+{
 
+    if (!m_database)
+    {
+        print("Error: 打开商店失败，DatabaseManager未初始化");
+        return;
+    }
+    if (getCurrentPhase() != RoundPhase::Prepare)
+    {
+        print("Error: 商店仅能在准备阶段打开");
+        return;
+    }
+    if (m_shopWindow)
+    {
+        print("商店窗口已存在（这对吗）");
+        m_shopWindow->show();
+        m_shopWindow->raise();
+        m_shopWindow->activateWindow();
+        return;
+    }
+    m_shopWindow = new ShopWindow(m_database, this);
+
+    // 连接商店关闭信号，确保在商店关闭后检查是否有可合并的单位
+    connect(m_shopWindow, &ShopWindow::shopClosed, this, &GameManager::checkAndMergeStars);
+    m_shopWindow->refreshShop();
+    m_shopWindow->show();
+}
 // % 升星逻辑
 void GameManager::checkAndMergeStars()
 {

@@ -6,6 +6,7 @@
 #include "unit_graphics_item.h"
 #include "database_manager.h"
 #include "shop_window.h"
+#include "render/renderer.h"
 
 #include <QBrush>
 #include <QCoreApplication>
@@ -29,17 +30,20 @@
 #include <QVariantAnimation>
 #include <algorithm>
 #include <cmath>
+/// 本文件专门处理UI初始化与UI逻辑交互
 
 // ============================================================================
 // % 程序生命周期
 // ============================================================================
 
+/// @brief 负责启动ui
+/// @param parent
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    print("进入主窗口入口");
     ui->setupUi(this);
     initUi();
-    print("Entry point initialized");
 
     // —— Logo 播放 ——
     LogoPlayer *logoPlayer = new LogoPlayer(ui->logoDisplayLabel, this);
@@ -55,58 +59,63 @@ MainWindow::MainWindow(QWidget *parent)
 /// @brief UI 初始化：固定窗口尺寸、切到 Logo 场景、搭建战场
 void MainWindow::initUi()
 {
+    print("开始初始化UI");
     ui->sceneController->setCurrentIndex(Scene::EntryLogo);
     this->setFixedSize(1920, 1080);
     this->setWindowTitle("GPAutoChess");
     setupGameScene();
+    print("UI初始化完毕");
 }
 
 /// @brief 首次点击"开始游戏"触发 —— 创建核心对象并绑定所有信号槽
 void MainWindow::initGame()
 {
-    print("Starting game");
+    print("启动！！");
     switchScene(Scene::MainGame);
 
     if (!m_gameManager)
     {
-        // —— 创建核心对象 ——
+        // 创建游戏主控
         m_gameManager = new GameManager(this);
-        if (!m_database)
-            m_database = new DatabaseManager(
-                QCoreApplication::applicationDirPath() + "/assets/entities", this);
-        m_gameManager->setDatabase(m_database);
+        m_gameManager->initialize();
 
-        // —— GameManager → MainWindow ——
-        connect(m_gameManager, &GameManager::splashText,
-                this, &MainWindow::showSplashText);
+        // 创建渲染器并注入
+        m_renderer = new Renderer(m_battleScene, this);
+        m_gameManager->setRenderer(m_renderer);
+
+        // 回合阶段改变 → UI 刷新
         connect(m_gameManager, &GameManager::phaseChanged, this, [this](RoundPhase p)
                 {
-            print(QString("Phase changed: %1").arg(static_cast<int>(p)));
+            print(QString("回合阶段改变至: %1").arg(static_cast<int>(p)));
             ui->startRoundButton->setEnabled(p == RoundPhase::Prepare);
             ui->openShopButton->setEnabled(p == RoundPhase::Prepare);
             refreshSceneLabels();
             refreshAllUnits(); });
+
+        // tick 信号 → 刷新单位
         connect(m_gameManager, &GameManager::tick, this, [this]()
-                {
-            refreshBattleGround();
-            refreshAllUnits(); });
+                { refreshAllUnits(); });
+
+        // 回合结束 → 显示结果
         connect(m_gameManager, &GameManager::roundEnded,
                 this, &MainWindow::showRoundResult);
+
+        // 本局游戏结束 → 显示最终成绩
         connect(m_gameManager, &GameManager::gameOver,
                 this, &MainWindow::showGameOver);
 
-        // —— UI 按钮 → GameManager ——
+        // 点击回合开始按钮 → 通知 GameManager 开始回合
         connect(ui->startRoundButton, &QPushButton::clicked, this, [this]()
                 {
             if (!m_gameManager) return;
             m_gameManager->startRound(m_gameManager->getRoundNumber());
-            refreshBattleGround();
             refreshAllUnits(); });
+
+        // 点击商店按钮 → 打开商店窗口
         connect(ui->openShopButton, &QPushButton::clicked,
                 this, &MainWindow::onShopOpenClicked);
     }
 
-    m_gameManager->initialize();
     refreshAllUnits();
     refreshSceneLabels();
 }
@@ -121,7 +130,9 @@ MainWindow::~MainWindow()
 // % UI切换
 // ============================================================================
 
-/// @brief 切换场景（QStackedWidget 页面跳转）
+/// @brief 切换场景（QStackedWidget 跳转）
+/// @param scene 目标场景
+/// @return 返回切换前的场景索引
 int MainWindow::switchScene(Scene scene)
 {
     print("Switching to scene " + QString::number(scene));
@@ -130,7 +141,9 @@ int MainWindow::switchScene(Scene scene)
     return currentScene;
 }
 
-/// @brief 资源路径辅助：可执行文件目录 → assets/ 子目录
+/// @brief 用于输出完整资源路径
+/// @param relativePath 输入相对路径（相对于 assets/）
+/// @return 返回绝对路径，如果资源不存在则返回 assets/ 相对路径
 QString MainWindow::assetPath(const QString &relativePath) const
 {
     const QString base = QCoreApplication::applicationDirPath();
@@ -144,17 +157,18 @@ QString MainWindow::assetPath(const QString &relativePath) const
 // ============================================================================
 // % 战场绘制
 // ============================================================================
+
 /// @brief 创建 QGraphicsScene 并绘制所有静态元素（背景、塔、备战席、出售区等）
 void MainWindow::setupGameScene()
 {
     QGraphicsView *battleView = ui->mainBattleGround;
     if (!battleView)
     {
-        print("Error: mainBattleGround is null");
+        print("Error: 战场画布是滚木");
         return;
     }
 
-    // —— 场景创建 ——
+    // 给QGraphicsView设置QGraphicsScene
     m_battleScene = new QGraphicsScene(this);
     battleView->setScene(m_battleScene);
     battleView->setAlignment(Qt::AlignLeft | Qt::AlignTop);
@@ -164,15 +178,15 @@ void MainWindow::setupGameScene()
     const int totalHeight = kBattlefieldHeight + kBenchAreaHeight;
     m_battleScene->setSceneRect(0, 0, kBattlefieldWidth, totalHeight);
 
-    // —— 战场背景贴图 ——
-    const QString bgPath = assetPath("battleground/sand.png");
+    // 战场背景贴图
+    const QString bgPath = assetPath("texture/battleground/sand.png");
     QPixmap bg(bgPath);
     if (!bg.isNull())
     {
         QSize sceneSize(kBattlefieldWidth, kBattlefieldHeight);
         const int safeMargin = 100;
         QSize targetSize(sceneSize.width() + safeMargin * 2,
-                         sceneSize.height() + safeMargin * 2);
+                         sceneSize.height() + safeMargin * 2); // 稍微放得比战场大些
         auto scaled = bg.scaled(targetSize, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
         auto *bgItem = m_battleScene->addPixmap(scaled);
         bgItem->setZValue(-1145);
@@ -184,33 +198,7 @@ void MainWindow::setupGameScene()
     {
         m_battleScene->setBackgroundBrush(QBrush(QColor("#424242")));
     }
-
-    // —— 塔占位符 ——
-    const double towerSize = 70.0;
-    const double towerX = 10.0;
-    const double towerY = kBattlefieldHeight / 2.0 - towerSize / 2.0;
-    auto *tower = m_battleScene->addRect(
-        QRectF(towerX, towerY, towerSize, towerSize),
-        QPen(QColor(80, 160, 255), 3.0),
-        QBrush(QColor(40, 100, 220, 200)));
-    tower->setZValue(5);
-
-    m_towerGpaText = m_battleScene->addSimpleText(QStringLiteral("4.0"));
-    m_towerGpaText->setBrush(Qt::black);
-    QFont gpaFont("Microsoft YaHei", 14);
-    gpaFont.setBold(true);
-    m_towerGpaText->setFont(gpaFont);
-    m_towerGpaText->setZValue(7);
-
-    // —— 备战席区域背景 ——
-    const int horizontalMargin = 50;
-    const double benchY = static_cast<double>(kBattlefieldHeight);
-    auto *benchBg = m_battleScene->addRect(
-        QRectF(horizontalMargin, benchY, kBattlefieldWidth - 2 * horizontalMargin, kBenchAreaHeight),
-        QPen(Qt::NoPen), QBrush(QColor("#686868")));
-    benchBg->setZValue(-10);
-
-    // —— 部署区提示边框 ——
+    // 部署区提示边框
     const double deployLeft = kBattlefieldMargin;
     const double deployTop = kBattlefieldMargin;
     const double deployRight = kBattlefieldWidth / 2.0 - kBattlefieldMargin + kDeployRightExtension;
@@ -226,7 +214,17 @@ void MainWindow::setupGameScene()
                                                 QBrush(QColor("#00ddff") ^ 0.1));
     deployBorder->setZValue(-5);
 
-    // —— 备战席槽位 ——
+    // % 备战席绘制
+
+    // 备战席区域背景
+    const int horizontalMargin = 50;
+    const double benchY = static_cast<double>(kBattlefieldHeight);
+    auto *benchBg = m_battleScene->addRect(
+        QRectF(horizontalMargin, benchY, kBattlefieldWidth - 2 * horizontalMargin, kBenchAreaHeight),
+        QPen(Qt::NoPen), QBrush(QColor("#686868")));
+    benchBg->setZValue(-10);
+
+    // 备战席槽位
     for (int i = 0; i < PlayerAssets::maxBench; ++i)
     {
         const double x = kBenchSlotStartX + i * kBenchSlotWidth;
@@ -238,7 +236,7 @@ void MainWindow::setupGameScene()
         slot->setZValue(1);
     }
 
-    // —— 出售区 ——
+    // 出售区
     const double sellSize = 100.0;
     const double sellX = kBenchSlotStartX + PlayerAssets::maxBench * kBenchSlotWidth + 20.0;
     const double sellY = kBenchSlotStartY + (kBenchSlotHeight - sellSize) / 2.0;
@@ -261,182 +259,60 @@ void MainWindow::setupGameScene()
 // % 战场刷新
 // ============================================================================
 
-/// @brief 刷新敌方单位 + behavior 产生的 DrawCmd（子弹、武器挥砍等）
-void MainWindow::refreshBattleGround()
-{
-    if (!m_battleScene || !m_gameManager)
-        return;
-
-    // ——— 清除上一帧的临时图形项 ———
-    QList<QGraphicsItem *> allItems = m_battleScene->items();
-    for (auto *item : allItems)
-    {
-        if (item->data(0).toInt() == -1)
-        {
-            m_battleScene->removeItem(item);
-            delete item;
-        }
-    }
-
-    // ——— 绘制敌方单位 ———
-    const auto &enemies = m_gameManager->getEnemies();
-    const double lerpT = m_gameManager->getTickLerp();
-    for (size_t i = 0; i < enemies.size(); ++i)
-    {
-        const EnemyInstance &enemy = enemies[i];
-        if (!enemy.isAlive)
-            continue;
-
-        // tick 间视觉插值
-        const double x = enemy.prevPosX + (enemy.posX - enemy.prevPosX) * lerpT;
-        const double y = enemy.prevPosY + (enemy.posY - enemy.prevPosY) * lerpT;
-        const double radius = 34.0;
-        const QColor color(240, 70, 70);
-
-        // 身体
-        QRectF bodyRect(x - radius, y - radius, radius * 2.0, radius * 2.0);
-        auto *body = m_battleScene->addEllipse(bodyRect, QPen(Qt::black, 2), QBrush(color));
-        body->setData(0, -1);
-        body->setZValue(10);
-
-        // 血条背景
-        const double barWidth = radius * 3.0;
-        const double barHeight = 8.0;
-        const double barX = x - barWidth / 2.0;
-        const double barY = y - radius - 24.0;
-        auto *barBack = m_battleScene->addRect(
-            QRectF(barX, barY, barWidth, barHeight),
-            QPen(Qt::NoPen), QBrush(QColor(40, 40, 40, 220)));
-        barBack->setData(0, -1);
-        barBack->setZValue(20);
-
-        // 血条前景
-        const int maxHp = enemy.hp.getFinal();
-        const double hpRatio = maxHp > 0
-                                   ? std::clamp(static_cast<double>(enemy.currentHp) / static_cast<double>(maxHp), 0.0, 1.0)
-                                   : 0.0;
-        auto *barFront = m_battleScene->addRect(
-            QRectF(barX, barY, barWidth * hpRatio, barHeight),
-            QPen(Qt::NoPen), QBrush(QColor(220, 60, 60)));
-        barFront->setData(0, -1);
-        barFront->setZValue(21);
-
-        // 名字 / 血量（阴影 + 前景）
-        auto *textShadow = m_battleScene->addSimpleText(
-            QString("%1\n%2/%3").arg(enemy.name).arg(enemy.currentHp).arg(maxHp));
-        textShadow->setBrush(QColor(0, 0, 0, 160));
-        textShadow->setData(0, -1);
-        textShadow->setZValue(29);
-        textShadow->setPos(x - textShadow->boundingRect().width() / 2.0 + 1.0,
-                           barY + barHeight + 3.0);
-
-        auto *text = m_battleScene->addSimpleText(
-            QString("%1\n%2/%3").arg(enemy.name).arg(enemy.currentHp).arg(maxHp));
-        text->setBrush(Qt::white);
-        text->setData(0, -1);
-        text->setZValue(30);
-        text->setPos(x - text->boundingRect().width() / 2.0, barY + barHeight + 2.0);
-    }
-
-    // ——— 渲染 behavior 产生的 DrawCmd ———
-    for (const auto &cmd : m_gameManager->getPendingDraws())
-    {
-        if (cmd.kind == DrawCmd::Circle)
-        {
-            double r = cmd.param1;
-            auto *circle = m_battleScene->addEllipse(
-                cmd.x - r, cmd.y - r, r * 2.0, r * 2.0,
-                QPen(Qt::NoPen), QBrush(cmd.color));
-            circle->setData(0, -1);
-            circle->setZValue(cmd.zValue);
-        }
-        else if (cmd.kind == DrawCmd::RotatedRect)
-        {
-            double hw = cmd.param1;
-            double hh = cmd.param2;
-            auto *rect = m_battleScene->addRect(
-                QRectF(-hw, -hh, hw * 2.0, hh * 2.0),
-                QPen(Qt::NoPen), QBrush(cmd.color));
-            rect->setPos(cmd.x, cmd.y);
-            rect->setRotation(cmd.angle * 180.0 / 3.14159265);
-            rect->setData(0, -1);
-            rect->setZValue(cmd.zValue);
-        }
-    }
-
-    // ——— 更新塔上的学分绩 ———
-    if (m_towerGpaText && m_gameManager)
-    {
-        double gpa = m_gameManager->getRoundGpa();
-        m_towerGpaText->setText(QString::number(gpa, 'f', 1));
-        const double tx = 10.0, ts = 70.0;
-        const double ty = kBattlefieldHeight / 2.0 - ts / 2.0;
-        m_towerGpaText->setPos(
-            tx + ts / 2.0 - m_towerGpaText->boundingRect().width() / 2.0,
-            ty + ts / 2.0 - m_towerGpaText->boundingRect().height() / 2.0);
-    }
-}
-
 /// @brief 刷新我方单位（部署 → 用 posX/posY；备战 → 按槽位算坐标）
 void MainWindow::refreshAllUnits()
 {
     if (!m_battleScene || !m_gameManager)
         return;
 
-    const auto &units = m_gameManager->getPlayerAssets().ownedChesses;
+    const auto &allyChesses = m_gameManager->getPlayerAssets().ownedChesses;
     QSet<int> currentUuids;
-    const bool isPrepare = (m_gameManager->getCurrentPhase() == RoundPhase::Prepare);
-    const double lerpT = m_gameManager->getTickLerp();
+    const bool isPreparePhase = (m_gameManager->getCurrentPhase() == RoundPhase::Prepare);
 
-    for (const auto &unit : units)
+    for (const auto &chess : allyChesses)
     {
-        currentUuids.insert(unit.uuid);
-        UnitGraphicsItem *item = m_unitItems.value(unit.uuid, nullptr);
+        currentUuids.insert(chess.uuid);                                 // 记录当前存在的单位 UUID
+        UnitGraphicsItem *item = m_unitItems.value(chess.uuid, nullptr); // 查找已有的图形项
 
         if (!item)
         {
-            item = new UnitGraphicsItem(unit.uuid);
+            // 如果uuid对应不到图形项，则创建新的图形项并加入场景
+            item = new UnitGraphicsItem(chess.uuid);
             m_battleScene->addItem(item);
-            m_unitItems[unit.uuid] = item;
+            m_unitItems[chess.uuid] = item;
             connect(item, &UnitGraphicsItem::dragStarted,
                     this, &MainWindow::onUnitDragStarted);
             connect(item, &UnitGraphicsItem::dragFinished,
                     this, &MainWindow::onUnitDragFinished);
         }
 
+        // 计算我方棋子目标位置
         QPointF targetPos;
-        double radius;
-        QColor color;
 
-        if (unit.deployed)
+        if (chess.deployed)
         {
-            // tick 间视觉插值
-            const double lx = unit.prevPosX + (unit.posX - unit.prevPosX) * lerpT;
-            const double ly = unit.prevPosY + (unit.posY - unit.prevPosY) * lerpT;
-            targetPos = QPointF(lx, ly);
-            radius = 34.0;
-            color = QColor(60, 110, 255);
+            targetPos = QPointF(chess.posX, chess.posY);
         }
         else
         {
-            int slot = unit.benchSlot;
+            int slot = chess.benchSlot;
             if (slot < 0 || slot >= PlayerAssets::maxBench)
                 slot = 0;
             const double cx = kBenchSlotStartX + slot * kBenchSlotWidth + (kBenchSlotWidth - 8) / 2.0;
             const double cy = kBenchSlotStartY + kBenchSlotHeight / 2.0;
             targetPos = QPointF(cx, cy);
-            radius = 22.0;
-            color = QColor(70, 120, 255);
         }
 
-        item->setVisible(unit.isAlive);
+        item->setVisible(chess.isAlive);
         item->setPos(targetPos);
-        item->setDraggable(isPrepare);
-        item->updateVisual(unit.name, unit.currentHp, unit.hp.getFinal(),
-                           color, radius, unit.starLevel, unit.deployed);
+        item->setDraggable(isPreparePhase);
+
+        // 视觉由 behavior 决定，entry 只提供坐标和实例引用
+        if (chess.behavior)
+            chess.behavior->renderSelf(chess, *m_renderer, targetPos.x(), targetPos.y());
     }
 
-    // ——— 清理已不存在的单位图形项 ———
+    // 清理已不存在的单位图形项
     QList<int> toRemove;
     for (auto it = m_unitItems.begin(); it != m_unitItems.end(); ++it)
     {
@@ -445,58 +321,6 @@ void MainWindow::refreshAllUnits()
     }
     for (int uuid : toRemove)
         delete m_unitItems.take(uuid);
-}
-
-/// @brief 战斗跳字（伤害/回血等）
-void MainWindow::showSplashText(const QString &text, double x, double y, const QString &color)
-{
-    if (!m_battleScene)
-        return;
-
-    QFont ftFont("Microsoft YaHei", 20);
-    ftFont.setBold(true);
-
-    // 前景
-    auto *font = m_battleScene->addSimpleText(text);
-    font->setFont(ftFont);
-    font->setBrush(QColor(color));
-    font->setPos(x - font->boundingRect().width() / 2.0, y - 30.0);
-    font->setTransformOriginPoint(font->boundingRect().center());
-    font->setZValue(500);
-    font->setScale(4.0);
-
-    // 阴影
-    auto *shadow = m_battleScene->addSimpleText(text);
-    shadow->setFont(ftFont);
-    shadow->setBrush(QColor("#000000") ^ 0.6);
-    shadow->setPos(font->pos() + QPointF(2, 2));
-    shadow->setTransformOriginPoint(shadow->boundingRect().center());
-    shadow->setZValue(499);
-    shadow->setScale(4.0);
-
-    // 缩放动画 4x → 1x, 300ms
-    auto *anim = new QVariantAnimation(this);
-    anim->setDuration(300);
-    anim->setStartValue(4.0);
-    anim->setEndValue(1.0);
-    anim->setEasingCurve(QEasingCurve::OutCubic);
-    connect(anim, &QVariantAnimation::valueChanged, this,
-            [font, shadow](const QVariant &val)
-            {
-                double s = val.toDouble();
-                font->setScale(s);
-                shadow->setScale(s);
-            });
-    connect(anim, &QVariantAnimation::finished, anim, &QObject::deleteLater);
-    anim->start(QAbstractAnimation::DeleteWhenStopped);
-
-    // 800ms 后自动移除
-    QTimer::singleShot(800, this, [font, shadow]()
-                       {
-        if (font->scene())   font->scene()->removeItem(font);
-        if (shadow->scene()) shadow->scene()->removeItem(shadow);
-        delete font;
-        delete shadow; });
 }
 
 // ============================================================================
@@ -516,6 +340,8 @@ void MainWindow::recenterSellLabel()
 }
 
 /// @brief 拖拽开始时的处理
+/// @param uuid 拖拽单位的 UUID
+/// @param scenePos 拖拽起始点
 void MainWindow::onUnitDragStarted(int uuid, QPointF scenePos)
 {
     if (!m_gameManager || !m_sellLabel)
@@ -530,7 +356,7 @@ void MainWindow::onUnitDragStarted(int uuid, QPointF scenePos)
     recenterSellLabel();
 }
 
-/// @brief 判断坐标是否在部署区（左半场）
+/// @brief 判断坐标是否在部署区
 bool MainWindow::isInBattlefieldLegalZone(QPointF scenePos) const
 {
     const double x = scenePos.x();
@@ -644,8 +470,6 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
             unit->benchSlot = -1;
             unit->posX = scenePos.x();
             unit->posY = scenePos.y();
-            unit->prevPosX = unit->posX;
-            unit->prevPosY = unit->posY;
             print(QString("Deploy unit %1 to battlefield (%2,%3)")
                       .arg(uuid)
                       .arg(scenePos.x())
@@ -752,22 +576,9 @@ void MainWindow::refreshSceneLabels()
 /// @brief 打开商店窗口（仅在准备阶段可用）
 void MainWindow::onShopOpenClicked()
 {
-    if (!m_gameManager || !m_database)
-        return;
-    if (m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
-        return;
-
-    if (!m_shopWindow)
-    {
-        m_shopWindow = new ShopWindow(m_database, m_gameManager, this);
-        connect(m_shopWindow, &ShopWindow::shopClosed, this, [this]()
-                {
-            m_gameManager->checkAndMergeStars();
-            refreshAllUnits();
-            refreshSceneLabels(); });
-    }
-    m_shopWindow->refreshShop();
-    m_shopWindow->show();
+    m_gameManager->openShop();
+    refreshAllUnits();
+    refreshSceneLabels();
 }
 
 // ============================================================================
@@ -797,7 +608,7 @@ void MainWindow::showRoundResult(bool victory)
                     "获得金币：%2\n"
                     "获得经验：%3\n"
                     "塔剩余血量：%4 / %5\n"
-                    "本回合学分绩：%6 / 4.0（%7学分）")
+                    "本回合学分绩：%6 * %7cr")
                     .arg(victory ? QStringLiteral("✨ 胜利！") : QStringLiteral("💀 失败..."))
                     .arg(goldEarned)
                     .arg(expEarned)
@@ -808,10 +619,8 @@ void MainWindow::showRoundResult(bool victory)
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
 
-    QTimer::singleShot(300, this, [this]()
-                       {
-        if (m_gameManager)
-            m_gameManager->nextRound(); });
+    if (m_gameManager)
+        m_gameManager->nextRound();
 }
 
 /// @brief 展示整局游戏结算对话框

@@ -13,6 +13,7 @@ class GameManager;
 class UnitGraphicsItem;
 class ShopWindow;
 class DatabaseManager;
+class Renderer;
 
 QT_BEGIN_NAMESPACE
 namespace Ui
@@ -50,10 +51,8 @@ private:
     void initUi();
     void initGame();
     void setupGameScene();
-    void refreshBattleGround();
     void refreshAllUnits();
     void refreshSceneLabels();
-    void showSplashText(const QString &text, double x, double y, const QString &color);
     void showRoundResult(bool victory);
     void showGameOver(double finalGpa);
     QString assetPath(const QString &relativePath) const;
@@ -78,11 +77,11 @@ private:
 
     // 管理
     GameManager *m_gameManager = nullptr;
+    Renderer *m_renderer = nullptr;
     QGraphicsScene *m_battleScene = nullptr;
-    QGraphicsSimpleTextItem *m_towerGpaText = nullptr;
     QGraphicsSimpleTextItem *m_sellLabel = nullptr;
     QMap<int, UnitGraphicsItem *> m_unitItems;
-    ShopWindow *m_shopWindow = nullptr;
+    
     DatabaseManager *m_database = nullptr;
 };
 

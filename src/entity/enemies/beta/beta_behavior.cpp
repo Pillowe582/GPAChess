@@ -1,18 +1,35 @@
 #include "beta_behavior.h"
 #include "state.h"
+#include "render/renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
 void BetaEnemy::tick(double dt, EnemyInstance &self,
                      std::vector<ChessInstance> &allies,
-                     std::vector<DrawCmd> &draws,
-                     int &towerHp, int &pendingGold, int &pendingExp,
-                     const SplashFn &splash)
+                     Renderer &renderer,
+                     int &towerHp, int &pendingGold, int &pendingExp)
 {
     auto rng = QRandomGenerator::global();
     auto jitter = [rng]() -> double
     { return (rng->generateDouble() - 0.5) * 30.0; };
 
+    // ====== 绘制自身 ======
+    {
+        double x = self.posX, y = self.posY, r = 34.0;
+        renderer.queueCircle(x, y, r, QColor(240, 70, 70), 10);
+        double barW = r * 3.0, barH = 8.0;
+        double barX = x - barW / 2.0, barY = y - r - 24.0;
+        renderer.queueRect(barX, barY, barW, barH, QColor(40, 40, 40, 220), 20);
+        int maxHp = self.hp.getFinal();
+        double hpRatio = maxHp > 0 ? std::clamp(static_cast<double>(self.currentHp) / maxHp, 0.0, 1.0) : 0.0;
+        renderer.queueRect(barX, barY, barW * hpRatio, barH, QColor(220, 60, 60), 21);
+        renderer.queueText(QString("%1\n%2/%3").arg(self.name).arg(self.currentHp).arg(maxHp),
+                           barX, barY + barH + 4.0, QColor(0, 0, 0, 160), 29);
+        renderer.queueText(QString("%1\n%2/%3").arg(self.name).arg(self.currentHp).arg(maxHp),
+                           barX - 1.0, barY + barH + 3.0, Qt::white, 30);
+    }
+
+    // ====== 远程逻辑 ======
     // ====== 推进已有子弹 ======
     for (size_t i = 0; i < m_bullets.size();)
     {
@@ -20,14 +37,8 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
-        DrawCmd cmd;
-        cmd.kind = DrawCmd::Circle;
-        cmd.x = b.x;
-        cmd.y = b.y;
-        cmd.param1 = 6.0;
-        cmd.color = QColor(255, 100, 100, 220);
-        cmd.zValue = 100;
-        draws.push_back(cmd);
+        renderer.queueCircle(b.x, b.y, 6.0,
+                             QColor(255, 100, 100, 220), 100);
 
         bool hit = false;
         for (auto &ally : allies)
@@ -39,10 +50,10 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
                 ally.takeDamage(b.damage);
-                splash(QString("-%1").arg(b.damage),
-                       ally.posX + jitter(),
-                       ally.posY - 20 + jitter(),
-                       QStringLiteral("#FFFFFF"));
+                renderer.queueSplash(QString("-%1").arg(b.damage),
+                                     ally.posX + jitter(),
+                                     ally.posY - 20 + jitter(),
+                                     QColor("#FFFFFF"));
                 hit = true;
                 break;
             }
@@ -83,7 +94,7 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
         // 没有我方单位 → 攻击塔
         int dmg = self.atk.getFinal();
         towerHp -= dmg;
-        splash(QString("-%1").arg(dmg), 80.0 + jitter(), 400.0 + jitter(), QStringLiteral("#FFFFFF"));
+        renderer.queueSplash(QString("-%1").arg(dmg), 80.0 + jitter(), 400.0 + jitter(), QColor("#FFFFFF"));
         m_cooldown = interval;
         return;
     }

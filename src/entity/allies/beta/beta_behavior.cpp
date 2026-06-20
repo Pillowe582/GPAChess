@@ -1,13 +1,13 @@
 #include "beta_behavior.h"
 #include "state.h"
+#include "render/renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
 void BetaAlly::tick(double dt, ChessInstance &self,
                     std::vector<EnemyInstance> &enemies,
-                    std::vector<DrawCmd> &draws,
-                    int &pendingGold, int &pendingExp,
-                    const SplashFn &splash)
+                    Renderer &renderer,
+                    int &pendingGold, int &pendingExp)
 {
     auto rng = QRandomGenerator::global();
     auto jitter = [rng]() -> double
@@ -20,14 +20,8 @@ void BetaAlly::tick(double dt, ChessInstance &self,
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
-        DrawCmd cmd;
-        cmd.kind = DrawCmd::Circle;
-        cmd.x = b.x;
-        cmd.y = b.y;
-        cmd.param1 = 6.0; // 半径
-        cmd.color = QColor(100, 220, 80, 220);
-        cmd.zValue = 100;
-        draws.push_back(cmd);
+        renderer.queueCircle(b.x, b.y, 6.0,
+                             QColor(100, 220, 80, 220), 100);
 
         bool hit = false;
         for (auto &enemy : enemies)
@@ -39,10 +33,10 @@ void BetaAlly::tick(double dt, ChessInstance &self,
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
                 enemy.takeDamage(b.damage);
-                splash(QString("-%1").arg(b.damage),
-                       enemy.posX + jitter(),
-                       enemy.posY - 20 + jitter(),
-                       QStringLiteral("#64DC50"));
+                renderer.queueSplash(QString("-%1").arg(b.damage),
+                                     enemy.posX + jitter(),
+                                     enemy.posY - 20 + jitter(),
+                                     QColor("#64DC50"));
                 if (!enemy.isAlive)
                 {
                     if (rng->bounded(10) == 0)

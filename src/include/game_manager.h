@@ -2,14 +2,19 @@
 #define GAMEMANAGER_H
 
 #include <QObject>
+#include "shop_window.h"
 #include <QTimer>
 #include <QRandomGenerator>
 #include <vector>
 #include "state.h"
 
-#define GAME_TICK_INTERVAL_MS 50
+#define GAME_TICK_INTERVAL_MS 5
 #define BASE_TOWER_HP 10000
 class DatabaseManager;
+class Renderer;
+class TowerBehavior;
+
+#include <memory> // for unique_ptr
 
 class GameManager : public QObject
 {
@@ -32,28 +37,19 @@ public:
     RoundPhase getCurrentPhase() const { return m_phase; }
     int getRoundNumber() const { return m_roundNumber; }
     int getTowerHp() const { return m_towerHp; }
-    int getMaxTowerHp() const { return m_maxTowerHp; }
+    int getMaxTowerHp() const { return m_towerMaxHp; }
     PlayerAssets &getPlayerAssets() { return m_player; }
     const PlayerAssets &getPlayerAssets() const { return m_player; }
     const std::vector<EnemyInstance> &getEnemies() const { return m_enemies; }
-    const std::vector<DrawCmd> &getPendingDraws() const { return m_pendingDraws; }
 
-    /// tick 间插值因子 (0~1)，供渲染层做位置 lerp
-    double getTickLerp() const { return m_tickProgress; }
+    /// 设置渲染器引用（由 MainWindow 注入）
+    void setRenderer(Renderer *r) { m_renderer = r; }
 
-    /// 设置/获取本局随机种子
-    void setGameSeed(quint32 seed)
-    {
-        m_gameSeed = seed;
-        m_rng.seed(seed);
-    }
     quint32 gameSeed() const { return m_gameSeed; }
-
-    /// 设置图鉴数据库引用
-    void setDatabase(DatabaseManager *db) { m_database = db; }
 
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
+    void openShop(); // 打开商店（仅在准备阶段可用）
 
     // 计算单位总价值（用于出售时返还金币）
     int getTotalWorth(int star, int cost)
@@ -88,12 +84,12 @@ public:
     }
     int getMaxRounds() const { return m_maxRounds; }
 
-    /// 本回合学分绩 = (塔血% × 4.0) 满分4.0
+    // 本回合学分绩 = (塔血百分比 × 4.0) 满分4.0
     double getRoundGpa() const
     {
-        if (m_maxTowerHp <= 0)
+        if (m_towerMaxHp <= 0)
             return 0.0;
-        double ratio = static_cast<double>(m_towerHp) / static_cast<double>(m_maxTowerHp);
+        double ratio = static_cast<double>(m_towerHp) / static_cast<double>(m_towerMaxHp);
         if (ratio < 0.0)
             ratio = 0.0;
         return ratio * 4.0;
@@ -131,7 +127,6 @@ private:
 
 private:
     QTimer *m_tickTimer;
-    int m_tickIntervalMs = GAME_TICK_INTERVAL_MS;
     int m_roundNumber;
     RoundPhase m_phase;
 
@@ -139,9 +134,12 @@ private:
     std::vector<EnemyInstance> m_enemies;
     std::vector<EnemyConfig> m_enemyConfigs;
 
-    int m_towerHp;
-    int m_maxTowerHp = BASE_TOWER_HP;
+    // 塔状态（纯数值，不建模为实体）
+    int m_towerHp = BASE_TOWER_HP;
+    int m_towerMaxHp = BASE_TOWER_HP;
+    double m_towerAttackCooldown = 0.0;
     double m_towerHpMultiplier = 1.0;
+    std::unique_ptr<TowerBehavior> m_towerBehavior; // 塔行为策略
     int m_roundStartGold = 0;
     int m_roundStartExp = 0;
     int m_guaranteedGold = 10;
@@ -151,13 +149,12 @@ private:
     double m_weightedGpaSum = 0.0; // Σ(学分×学分绩)
     int m_totalCredits = 0;        // 已完成回合的学分之和
 
-    double m_towerAttackCooldown = 0.0; // 塔攻击冷却
     double m_timeAccumulator;
-    double m_tickProgress = 0.0; // tick 间插值进度 0~1
     quint32 m_gameSeed = 12345;
+    ShopWindow *m_shopWindow = nullptr;
     QRandomGenerator m_rng{12345};
     DatabaseManager *m_database = nullptr;
-    std::vector<DrawCmd> m_pendingDraws; // 每帧 behavior 产生的渲染指令
+    Renderer *m_renderer = nullptr; // 渲染器（由 MainWindow 注入）
 };
 
 #endif

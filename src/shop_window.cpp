@@ -13,6 +13,7 @@ ShopWindow::ShopWindow(DatabaseManager *db, GameManager *gm, QWidget *parent)
     : QMainWindow(parent), ui(new Ui::shopWindow), m_db(db), m_gameManager(gm)
 {
     ui->setupUi(this);
+    print("打开商店窗口…");
     setWindowFlags(Qt::Dialog | Qt::WindowCloseButtonHint);
     setWindowModality(Qt::ApplicationModal);
 

@@ -1,31 +1,27 @@
 #ifndef ALLY_BEHAVIOR_H
 #define ALLY_BEHAVIOR_H
 
-#include <QColor>
-#include <QString>
-#include <functional>
+#include "entity/base_behavior.h"
 #include <vector>
 
 class ChessInstance;
 class EnemyInstance;
-struct DrawCmd; // 前置声明，定义在 state.h
+class Renderer;
 
-/// 我方单位行为基类 —— 每个角色完全自包含
-class AllyBehavior
+class AllyBehavior : public BaseBehavior
 {
 public:
-    virtual ~AllyBehavior() = default;
-
-    using SplashFn = std::function<void(const QString &, double, double, const QString &)>;
-
-    /// 每帧主逻辑：移动、攻击、生成渲染数据，全部在此完成
     virtual void tick(double dt,
                       ChessInstance &self,
                       std::vector<EnemyInstance> &enemies,
-                      std::vector<DrawCmd> &draws,
+                      Renderer &renderer,
                       int &pendingGold,
-                      int &pendingExp,
-                      const SplashFn &splash) = 0;
+                      int &pendingExp) = 0;
+
+    /// 渲染自身 —— 由 refreshAllUnits 每帧调用
+    /// entry 负责计算坐标 (x,y), behavior 读取 self 的状态决定画什么
+    virtual void renderSelf(const ChessInstance &self, Renderer &r,
+                            double x, double y);
 };
 
 AllyBehavior *createAllyBehavior(int behaviorId);
