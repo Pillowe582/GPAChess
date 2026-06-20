@@ -218,8 +218,8 @@ void MainWindow::refreshBattleGround()
         if (!enemy.isAlive)
             continue;
 
-        const double x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
-        const double y = 160.0 + (static_cast<double>(i / 3) * 180.0);
+        const double x = enemy.posX;
+        const double y = enemy.posY;
         const double radius = 34.0;
         const QColor color(240, 70, 70);
 
@@ -260,6 +260,32 @@ void MainWindow::refreshBattleGround()
         text->setData(0, -1);
         text->setZValue(30);
         text->setPos(x - text->boundingRect().width() / 2.0, barY + barHeight + 2.0);
+    }
+
+    // ====== 渲染 behavior 产生的 DrawCmd（子弹、武器等）======
+    for (const auto &cmd : m_gameManager->getPendingDraws())
+    {
+        if (cmd.kind == DrawCmd::Circle)
+        {
+            double r = cmd.param1;
+            auto *circle = m_battleScene->addEllipse(
+                cmd.x - r, cmd.y - r, r * 2.0, r * 2.0,
+                QPen(Qt::NoPen), QBrush(cmd.color));
+            circle->setData(0, -1);
+            circle->setZValue(cmd.zValue);
+        }
+        else if (cmd.kind == DrawCmd::RotatedRect)
+        {
+            double hw = cmd.param1;
+            double hh = cmd.param2;
+            auto *rect = m_battleScene->addRect(
+                QRectF(-hw, -hh, hw * 2.0, hh * 2.0),
+                QPen(Qt::NoPen), QBrush(cmd.color));
+            rect->setPos(cmd.x, cmd.y);
+            rect->setRotation(cmd.angle * 180.0 / 3.14159265);
+            rect->setData(0, -1);
+            rect->setZValue(cmd.zValue);
+        }
     }
 
     // 更新塔上的学分绩
@@ -326,7 +352,7 @@ void MainWindow::refreshAllUnits()
         item->setVisible(unit.isAlive);
         item->setPos(targetPos);
         item->setDraggable(isPrepare);
-        item->updateVisual(unit.name, unit.currentHp, unit.hp.getFinal(), color, radius, unit.starLevel);
+        item->updateVisual(unit.name, unit.currentHp, unit.hp.getFinal(), color, radius, unit.starLevel, unit.deployed);
     }
 
     // 清理已不存在的单位图形项
@@ -562,7 +588,7 @@ void MainWindow::refreshSceneLabels()
     if (auto *gpa = findChild<QLabel *>("gpa"))
         gpa->setText(QString("GPA：%1/4.0").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
     if (auto *roundValue = findChild<QLabel *>("roundValue"))
-        roundValue->setText(QString("已上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
+        roundValue->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
     if (auto *goldCount = findChild<QLabel *>("goldCount"))
         goldCount->setText(QString("金币：%1").arg(assets.gold));
 }

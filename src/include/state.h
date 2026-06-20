@@ -10,6 +10,23 @@
 #include "entity/ally_behavior.h"
 #include "entity/enemy_behavior.h"
 
+/// 渲染指令（纯数据，无逻辑）
+struct DrawCmd
+{
+    enum Kind
+    {
+        Circle,     // 实心圆（子弹等）
+        RotatedRect // 旋转矩形（武器挥砍等）
+    };
+    Kind kind = Circle;
+    double x = 0, y = 0;
+    double param1 = 0; // Circle: radius, RotatedRect: half-width
+    double param2 = 0; // RotatedRect: half-height
+    double angle = 0;
+    QColor color;
+    int zValue = 100;
+};
+
 // 状态机阶段枚举
 enum class RoundPhase
 {
@@ -142,7 +159,6 @@ public:
     int targetEnemyId = -1; // 当前索敌的UUID，-1表示没有目标
 
     std::unique_ptr<AllyBehavior> behavior; // 攻击行为策略
-    double skillCooldownRemaining = 0.0;    // 技能冷却剩余（秒）
 
     void calculateBaseStatsByStar()
     {
@@ -218,7 +234,6 @@ public:
     double posY = 0;
 
     std::unique_ptr<EnemyBehavior> behavior;
-    double skillCooldownRemaining = 0.0;
 
     void takeDamage(int rawDamage)
     {

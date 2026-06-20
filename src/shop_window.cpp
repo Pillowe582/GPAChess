@@ -118,20 +118,17 @@ void ShopWindow::onPurchaseClicked()
 
 void ShopWindow::onRefreshClicked()
 {
-    const int cost = 2;
-    auto &assets = m_gameManager->getPlayerAssets();
-    if (assets.gold < cost)
-    {
-        QMessageBox::warning(this, QStringLiteral("金币不足"), QStringLiteral("刷新需要4金币！"));
+    if (m_gameManager->getPlayerAssets().gold < 2)
         return;
-    }
-    assets.gold -= cost;
+    m_gameManager->getPlayerAssets().gold -= 2;
     refreshShop();
 }
 
 void ShopWindow::updateGoldLabel()
 {
-    ui->shopGoldLabel->setText(QString("金币：%1").arg(m_gameManager->getPlayerAssets().gold));
+    int gold = m_gameManager->getPlayerAssets().gold;
+    ui->shopGoldLabel->setText(QString("金币：%1").arg(gold));
+    ui->shopRefreshButton->setEnabled(gold >= 2);
 }
 
 void ShopWindow::closeEvent(QCloseEvent *event)

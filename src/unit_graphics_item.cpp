@@ -17,10 +17,10 @@ UnitGraphicsItem::UnitGraphicsItem(int unitUuid, QGraphicsItem *parent)
 // --------------- visual ---------------
 
 void UnitGraphicsItem::updateVisual(const QString &name, int currentHp, int maxHp,
-                                    const QColor &fillColor, double radius, int starLevel)
+                                    const QColor &fillColor, double radius, int starLevel, bool deployed)
 {
     if (m_name != name || m_fillColor != fillColor || m_radius != radius ||
-        m_currentHp != currentHp || m_maxHp != maxHp || m_starLevel != starLevel)
+        m_currentHp != currentHp || m_maxHp != maxHp || m_starLevel != starLevel || m_deployed != deployed)
     {
         prepareGeometryChange();
         m_name = name;
@@ -29,6 +29,7 @@ void UnitGraphicsItem::updateVisual(const QString &name, int currentHp, int maxH
         m_currentHp = currentHp;
         m_maxHp = maxHp;
         m_starLevel = starLevel;
+        m_deployed = deployed;
         update();
     }
 }

@@ -36,6 +36,7 @@ public:
     PlayerAssets &getPlayerAssets() { return m_player; }
     const PlayerAssets &getPlayerAssets() const { return m_player; }
     const std::vector<EnemyInstance> &getEnemies() const { return m_enemies; }
+    const std::vector<DrawCmd> &getPendingDraws() const { return m_pendingDraws; }
 
     /// 设置/获取本局随机种子
     void setGameSeed(quint32 seed)
@@ -124,7 +125,7 @@ private:
 
     PlayerAssets m_player;
     std::vector<EnemyInstance> m_enemies;
-    std::vector<EnemyConfig> m_enemyConfigs; // storage for configs lifetime
+    std::vector<EnemyConfig> m_enemyConfigs;
 
     int m_towerHp;
     int m_maxTowerHp = BASE_TOWER_HP;
@@ -143,6 +144,7 @@ private:
     quint32 m_gameSeed = 12345;
     QRandomGenerator m_rng{12345};
     DatabaseManager *m_database = nullptr;
+    std::vector<DrawCmd> m_pendingDraws; // 每帧 behavior 产生的渲染指令
 };
 
 #endif
