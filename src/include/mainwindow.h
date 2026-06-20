@@ -79,4 +79,15 @@ private:
     DatabaseManager *m_database = nullptr;
 };
 
+/// @brief 为 QColor 设置 alpha 值的便捷操作符
+/// @param color 传入QColor对象
+/// @param alpha 传入alpha值（0.0~1.0）
+/// @return 修改后的alpha自身
+inline QColor operator^(const QColor &color, double alpha)
+{
+    QColor c = color;
+    c.setAlphaF(alpha);
+    return c;
+}
+
 #endif
