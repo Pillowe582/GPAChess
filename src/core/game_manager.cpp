@@ -5,6 +5,7 @@
 #include "entity/enemy_behavior.h"
 
 #include <algorithm>
+#include <cmath>
 #include <QRandomGenerator>
 
 GameManager::GameManager(QObject *parent)
@@ -16,6 +17,7 @@ GameManager::GameManager(QObject *parent)
     connect(m_tickTimer, &QTimer::timeout, this, &GameManager::onTick);
 }
 
+// % 全局初始化
 /// @brief 整局游戏初始化
 void GameManager::initialize()
 {
@@ -58,6 +60,7 @@ void GameManager::initialize()
     emit phaseChanged(m_phase);
 }
 
+// % 回合逻辑
 /// @brief 回合开始
 /// @param roundNumber
 void GameManager::startRound(int roundNumber)
@@ -69,6 +72,19 @@ void GameManager::startRound(int roundNumber)
     // 每回合塔满血
     m_towerHp = BASE_TOWER_HP * m_towerHpMultiplier;
     m_towerAttackCooldown = 0.0;
+    m_timeAccumulator = 0.0;
+    m_tickProgress = 0.0;
+
+    // 快照所有已部署单位的战场位置，用于回合结束后复位
+    for (auto &u : m_player.ownedChesses)
+    {
+        if (u.deployed)
+        {
+            u.savedPosX = u.posX;
+            u.savedPosY = u.posY;
+        }
+    }
+
     transitionPhase(RoundPhase::Combat);
     spawnEnemies(m_roundNumber);
     m_tickTimer->start();
@@ -79,6 +95,7 @@ void GameManager::stopRound()
 {
     if (m_tickTimer->isActive())
         m_tickTimer->stop();
+    m_pendingDraws.clear(); // 清除子弹/武器等临时渲染元素
 }
 
 /// @brief 处理从结算界面进入下一轮准备阶段的过渡
@@ -114,7 +131,17 @@ void GameManager::nextRound()
 void GameManager::resetUnitsForNextRound()
 {
     for (auto &unit : m_player.ownedChesses)
+    {
         unit.resetStatus();
+        // 回合结束后，已部署单位回到回合开始时的位置
+        if (unit.deployed)
+        {
+            unit.posX = unit.savedPosX;
+            unit.posY = unit.savedPosY;
+            unit.prevPosX = unit.posX;
+            unit.prevPosY = unit.posY;
+        }
+    }
     m_enemies.clear();
     m_towerAttackCooldown = 0.0;
     m_timeAccumulator = 0.0;
@@ -131,6 +158,7 @@ void GameManager::transitionPhase(RoundPhase newPhase)
     emit phaseChanged(m_phase);
 }
 
+//%敌方生成逻辑
 void GameManager::spawnEnemies(int roundNumber)
 {
     m_enemies.clear();
@@ -171,11 +199,16 @@ std::vector<EnemyConfig> GameManager::pickRandomEnemies(int count, int roundNumb
     return result;
 }
 
+// % 发出游戏刻信号
 void GameManager::onTick()
 {
     // delta in seconds
     double delta = m_tickIntervalMs / 1000.0;
     m_timeAccumulator += delta;
+
+    // 计算插值进度：用于渲染时在两 tick 间做位置 lerp
+    m_tickProgress = std::fmod(m_timeAccumulator, delta) / delta;
+
     executeAttackCycle(delta);
     emit tick();
 
@@ -188,6 +221,7 @@ void GameManager::onTick()
     }
 }
 
+// % 攻击循环
 void GameManager::executeAttackCycle(double deltaSeconds)
 {
     // ====== 塔攻击冷却 ======
@@ -202,6 +236,18 @@ void GameManager::executeAttackCycle(double deltaSeconds)
 
     // 收集所有渲染指令
     std::vector<DrawCmd> draws;
+
+    // —— 保存上一 tick 位置用于插值平滑 ——
+    for (auto &ally : m_player.ownedChesses)
+    {
+        ally.prevPosX = ally.posX;
+        ally.prevPosY = ally.posY;
+    }
+    for (auto &enemy : m_enemies)
+    {
+        enemy.prevPosX = enemy.posX;
+        enemy.prevPosY = enemy.posY;
+    }
 
     // ====== 我方单位：委托给各自 behavior ======
     for (auto &ally : m_player.ownedChesses)
@@ -251,6 +297,7 @@ void GameManager::executeAttackCycle(double deltaSeconds)
     m_pendingDraws = std::move(draws);
 }
 
+// % 检查战斗结束
 bool GameManager::checkCombatEndConditions(bool &outVictory)
 {
     bool anyEnemyAlive = std::any_of(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
@@ -274,6 +321,7 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     return false;
 }
 
+// % 升星逻辑
 void GameManager::checkAndMergeStars()
 {
     auto &units = m_player.ownedChesses;
@@ -351,6 +399,7 @@ void GameManager::checkAndMergeStars()
     }
 }
 
+//% 售卖单位逻辑
 /// @brief 卖出单位
 /// @param uuid
 /// @return 卖出获得的金币数量
@@ -363,14 +412,10 @@ int GameManager::sellUnit(int uuid)
         {
             int star = units[i].starLevel;
             int cost = units[i].cost;
-            int refund = cost;
-
-            // 卖出价格 = 基础费用 × (2^星级 - 1)
-            for (int s = 1; s < star; ++s)
-                refund *= 3;
+            int refund = getTotalWorth(star, cost);
 
             m_player.gold += refund;
-            print(QString("Sold %1★%2for %4 gold")
+            print(QString("Sold %1★%2 for %3 gold")
                       .arg(star)
                       .arg(uuid)
                       .arg(refund));
@@ -381,6 +426,7 @@ int GameManager::sellUnit(int uuid)
     }
     return 0;
 }
+
 GameManager::~GameManager()
 {
     if (m_tickTimer->isActive())

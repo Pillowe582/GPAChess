@@ -26,6 +26,8 @@ public:
 signals:
     /// 拖拽结束时发射，携带 uuid 和最终 scene 坐标
     void dragFinished(int uuid, QPointF scenePos);
+    // 拖拽开始时发射，携带 uuid 和初始 scene 坐标
+    void dragStarted(int uuid, QPointF scenePos);
 
 protected:
     void mousePressEvent(QGraphicsSceneMouseEvent *event) override;

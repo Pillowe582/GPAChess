@@ -154,8 +154,12 @@ public:
     int benchSlot = -1;    // 备战席槽位索引 0~10, 仅在 !deployed 时有效; -1 表示未分配
 
     // 位置与 AI 状态
-    double posX = 0;        // 战场上的 X 坐标 (仅在 deployed 时有效)
-    double posY = 0;        // 战场上的 Y 坐标 (仅在 deployed 时有效)
+    double posX = 0;     // 战场上的 X 坐标 (仅在 deployed 时有效)
+    double posY = 0;     // 战场上的 Y 坐标 (仅在 deployed 时有效)
+    double prevPosX = 0; // 上一 tick 位置，用于插值平滑
+    double prevPosY = 0;
+    double savedPosX = 0; // 回合开始时的位置快照
+    double savedPosY = 0;
     int targetEnemyId = -1; // 当前索敌的UUID，-1表示没有目标
 
     std::unique_ptr<AllyBehavior> behavior; // 攻击行为策略
@@ -232,6 +236,8 @@ public:
 
     double posX = 0;
     double posY = 0;
+    double prevPosX = 0; // 上一 tick 位置，用于插值平滑
+    double prevPosY = 0;
 
     std::unique_ptr<EnemyBehavior> behavior;
 
@@ -297,6 +303,22 @@ public:
             if (!occupied[i])
                 return i;
         return -1; // 备战席已满
+    }
+
+    // ---- 按 uuid 查找单位 (O(n), 但 n ≤ 16) ----
+    ChessInstance *getUnitByUuid(int uuid)
+    {
+        for (auto &u : ownedChesses)
+            if (u.uuid == uuid)
+                return &u;
+        return nullptr;
+    }
+    const ChessInstance *getUnitByUuid(int uuid) const
+    {
+        for (const auto &u : ownedChesses)
+            if (u.uuid == uuid)
+                return &u;
+        return nullptr;
     }
 };
 

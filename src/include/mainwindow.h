@@ -38,6 +38,8 @@ public:
     int switchScene(Scene scene);
 
 private slots:
+    /// 单位拖拽开始时的处理
+    void onUnitDragStarted(int uuid, QPointF scenePos);
     /// 单位拖拽结束后的处理
     void onUnitDragFinished(int uuid, QPointF scenePos);
     /// 打开商店
@@ -61,6 +63,7 @@ private:
     bool isInBenchZone(QPointF scenePos) const;
     bool isInSellZone(QPointF scenePos) const;
     int nearestBenchSlot(QPointF scenePos) const;
+    void recenterSellLabel();
 
     // 常量
     static constexpr int kBattlefieldWidth = 1920;
@@ -77,6 +80,7 @@ private:
     GameManager *m_gameManager = nullptr;
     QGraphicsScene *m_battleScene = nullptr;
     QGraphicsSimpleTextItem *m_towerGpaText = nullptr;
+    QGraphicsSimpleTextItem *m_sellLabel = nullptr;
     QMap<int, UnitGraphicsItem *> m_unitItems;
     ShopWindow *m_shopWindow = nullptr;
     DatabaseManager *m_database = nullptr;

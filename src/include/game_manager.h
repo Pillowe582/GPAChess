@@ -38,6 +38,9 @@ public:
     const std::vector<EnemyInstance> &getEnemies() const { return m_enemies; }
     const std::vector<DrawCmd> &getPendingDraws() const { return m_pendingDraws; }
 
+    /// tick 间插值因子 (0~1)，供渲染层做位置 lerp
+    double getTickLerp() const { return m_tickProgress; }
+
     /// 设置/获取本局随机种子
     void setGameSeed(quint32 seed)
     {
@@ -51,6 +54,15 @@ public:
 
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
+
+    // 计算单位总价值（用于出售时返还金币）
+    int getTotalWorth(int star, int cost)
+    {
+        int total = cost;
+        for (int s = 1; s < star; ++s)
+            total *= 3;
+        return total;
+    }
 
     /// 出售单位，返回获得的费用
     int sellUnit(int uuid);
@@ -141,6 +153,7 @@ private:
 
     double m_towerAttackCooldown = 0.0; // 塔攻击冷却
     double m_timeAccumulator;
+    double m_tickProgress = 0.0; // tick 间插值进度 0~1
     quint32 m_gameSeed = 12345;
     QRandomGenerator m_rng{12345};
     DatabaseManager *m_database = nullptr;

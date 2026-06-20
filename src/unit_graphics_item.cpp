@@ -126,6 +126,7 @@ void UnitGraphicsItem::mousePressEvent(QGraphicsSceneMouseEvent *event)
     }
     m_dragOrigin = pos();
     setZValue(100); // 拖拽时置顶
+    emit dragStarted(m_uuid, m_dragOrigin);
     QGraphicsObject::mousePressEvent(event);
 }
 
