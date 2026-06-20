@@ -330,6 +330,13 @@ void MainWindow::refreshAllUnits()
     }
     for (int uuid : toRemove)
         delete m_unitItems.take(uuid);
+
+    // 渲染 behavior 排队的绘制指令
+    // 准备阶段：需要 beginFrame 清旧帧 + flush 渲染
+    // 对战阶段：beginFrame 已由 executeAttackCycle 调用，只需 flush
+    if (isPreparePhase)
+        m_renderer->beginFrame();
+    m_renderer->flush();
 }
 
 /// @brief 根据当前 GameManager 状态更新所有 UI 标签

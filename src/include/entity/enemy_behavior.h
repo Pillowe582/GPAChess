@@ -11,6 +11,7 @@ class Renderer;
 class EnemyBehavior : public BaseBehavior
 {
 public:
+    // ========== 逻辑 tick ==========
     virtual void tick(double dt,
                       EnemyInstance &self,
                       std::vector<ChessInstance> &allies,
@@ -18,6 +19,9 @@ public:
                       int &towerHp,
                       int &pendingGold,
                       int &pendingExp) = 0;
+
+    // ========== 渲染 tick（与逻辑分离）==========
+    virtual void renderSelf(const EnemyInstance &self, Renderer &r);
 };
 
 EnemyBehavior *createEnemyBehavior(int behaviorId);

@@ -13,22 +13,6 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
     auto jitter = [rng]() -> double
     { return (rng->generateDouble() - 0.5) * 30.0; };
 
-    // ====== 绘制自身 ======
-    {
-        double x = self.posX, y = self.posY, r = 34.0;
-        renderer.queueCircle(x, y, r, QColor(240, 70, 70), 10);
-        double barW = r * 3.0, barH = 8.0;
-        double barX = x - barW / 2.0, barY = y - r - 24.0;
-        renderer.queueRect(barX, barY, barW, barH, QColor(40, 40, 40, 220), 20);
-        int maxHp = self.hp.getFinal();
-        double hpRatio = maxHp > 0 ? std::clamp(static_cast<double>(self.currentHp) / maxHp, 0.0, 1.0) : 0.0;
-        renderer.queueRect(barX, barY, barW * hpRatio, barH, QColor(220, 60, 60), 21);
-        renderer.queueText(QString("%1\n%2/%3").arg(self.name).arg(self.currentHp).arg(maxHp),
-                           barX, barY + barH + 4.0, QColor(0, 0, 0, 160), 29);
-        renderer.queueText(QString("%1\n%2/%3").arg(self.name).arg(self.currentHp).arg(maxHp),
-                           barX - 1.0, barY + barH + 3.0, Qt::white, 30);
-    }
-
     // ====== 近战逻辑 ======
     m_cooldown = std::max(0.0, m_cooldown - dt);
 
@@ -69,7 +53,7 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
         }
 
         renderer.queueRect(self.posX, self.posY, 110.0, 16.0,
-                           QColor(255, 80, 80, 200), 90,
+                           QColor("rgb(255, 80, 80)"), 90,
                            m_weapon.angle * 180.0 / 3.14159265, true);
         return;
     }

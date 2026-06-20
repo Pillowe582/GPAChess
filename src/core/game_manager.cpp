@@ -246,36 +246,38 @@ void GameManager::executeAttackCycle(double deltaSeconds)
     if (!m_renderer)
         return;
 
-    m_renderer->beginFrame();
+    // ═══════════ 逻辑 Phase ═══════════
 
-    // ====== 我方单位：委托给各自 behavior ======
+    // Ally
     for (auto &ally : m_player.ownedChesses)
-    {
-        if (!ally.isAlive || !ally.deployed || !ally.behavior)
-            continue;
-        ally.behavior->tick(deltaSeconds, ally, m_enemies, *m_renderer,
-                            m_pendingGold, m_pendingExp);
-    }
+        if (ally.isAlive && ally.deployed && ally.behavior)
+            ally.behavior->tick(deltaSeconds, ally, m_enemies, *m_renderer,
+                                m_pendingGold, m_pendingExp);
 
-    // ====== 敌方单位：委托给各自 behavior ======
+    // Enemy
     for (auto &enemy : m_enemies)
-    {
-        if (!enemy.isAlive || !enemy.behavior)
-            continue;
-        enemy.behavior->tick(deltaSeconds, enemy,
-                             m_player.ownedChesses, *m_renderer,
-                             m_towerHp, m_pendingGold, m_pendingExp);
-    }
+        if (enemy.isAlive && enemy.behavior)
+            enemy.behavior->tick(deltaSeconds, enemy, m_player.ownedChesses,
+                                 *m_renderer, m_towerHp, m_pendingGold, m_pendingExp);
 
-    // ====== 塔：委托给 TowerBehavior ======
+    // Tower
     if (m_towerBehavior && m_towerHp > 0)
-    {
         m_towerBehavior->tick(deltaSeconds, m_towerHp, m_towerMaxHp,
                               m_towerAttackCooldown, m_enemies, *m_renderer,
                               m_pendingGold, m_pendingExp);
-    }
 
-    // 一次性渲染所有排队指令
+    // ═══════════ 渲染 Phase ═══════════
+    m_renderer->beginFrame();
+
+    for (auto &enemy : m_enemies)
+        if (enemy.isAlive && enemy.behavior)
+            enemy.behavior->renderSelf(enemy, *m_renderer);
+
+    if (m_towerBehavior && m_towerHp > 0)
+        m_towerBehavior->renderSelf(m_towerHp, m_towerMaxHp, *m_renderer);
+
+    // Ally 渲染由 refreshAllUnits 在 tick 信号中处理
+
     m_renderer->flush();
 }
 

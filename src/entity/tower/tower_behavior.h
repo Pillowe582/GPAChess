@@ -10,6 +10,7 @@ class Renderer;
 class TowerBehavior : public BaseBehavior
 {
 public:
+    // ========== 逻辑 tick ==========
     virtual void tick(double dt,
                       int &currentHp,
                       int maxHp,
@@ -18,6 +19,9 @@ public:
                       Renderer &renderer,
                       int &pendingGold,
                       int &pendingExp) = 0;
+
+    // ========== 渲染 tick（与逻辑分离）==========
+    virtual void renderSelf(int currentHp, int maxHp, Renderer &r);
 };
 
 TowerBehavior *createTowerBehavior();

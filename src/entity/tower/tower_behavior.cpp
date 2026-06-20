@@ -9,11 +9,9 @@
 class DefaultTower : public TowerBehavior
 {
 public:
-    void onStart() override
-    {
-        // cooldown 由 GameManager 传入引用，这里不需要重置
-    }
+    void onStart() override {}
 
+    // ========== 逻辑 tick ==========
     void tick(double dt,
               int &currentHp,
               int maxHp,
@@ -26,26 +24,6 @@ public:
         auto rng = QRandomGenerator::global();
         auto jitter = [rng]() -> double
         { return (rng->generateDouble() - 0.5) * 30.0; };
-
-        // ====== 绘制塔自身 ======
-        {
-            const double tx = 10.0, ts = 70.0, ty = 400.0 - ts / 2.0;
-            // 塔主体
-            renderer.queueRect(tx, ty, ts, ts, QColor(40, 100, 220, 200), 5);
-            // HP 条背景
-            renderer.queueRect(tx, ty - 12.0, ts, 6.0, QColor(40, 40, 40, 200), 6);
-            // HP 条前景
-            double hpRatio = maxHp > 0 ? std::clamp(static_cast<double>(currentHp) / maxHp, 0.0, 1.0) : 0.0;
-            QColor hpC = hpRatio > 0.5    ? QColor(80, 180, 255)
-                         : hpRatio > 0.25 ? QColor(255, 200, 60)
-                                          : QColor(255, 70, 70);
-            renderer.queueRect(tx, ty - 12.0, ts * hpRatio, 6.0, hpC, 7);
-            // GPA 数值（由当前血量比例计算）
-            double gpa = hpRatio * 4.0;
-            renderer.queueText(QString::number(gpa, 'f', 1),
-                               tx + ts / 2.0 - 10.0, ty + ts / 2.0 - 10.0,
-                               Qt::black, 8);
-        }
 
         // ====== 攻击逻辑 ======
         // 冷却递减
@@ -82,6 +60,26 @@ public:
         cooldown = 1.5;
     }
 };
+
+// ========== 塔渲染共享实现 ==========
+void TowerBehavior::renderSelf(int currentHp, int maxHp, Renderer &r)
+{
+    const double tx = 10.0, ts = 70.0, ty = 400.0 - ts / 2.0;
+    r.queueRect(tx, ty, ts, ts, QColor(40, 100, 220, 200), 5);
+
+    r.queueRect(tx, ty - 12.0, ts, 6.0, QColor(40, 40, 40, 200), 6);
+
+    double hpRatio = maxHp > 0 ? std::clamp(static_cast<double>(currentHp) / maxHp, 0.0, 1.0) : 0.0;
+    QColor hpC = hpRatio > 0.5    ? QColor(80, 180, 255)
+                 : hpRatio > 0.25 ? QColor(255, 200, 60)
+                                  : QColor(255, 70, 70);
+    r.queueRect(tx, ty - 12.0, ts * hpRatio, 6.0, hpC, 7);
+
+    double gpa = hpRatio * 4.0;
+    r.queueText(QString::number(gpa, 'f', 1),
+                tx + ts / 2.0 - 10.0, ty + ts / 2.0 - 10.0,
+                Qt::black, 8);
+}
 
 TowerBehavior *createTowerBehavior()
 {
