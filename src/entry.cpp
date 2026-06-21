@@ -367,7 +367,7 @@ void MainWindow::refreshSceneLabels()
         return;
 
     int round = m_gameManager->getRoundNumber();
-    int credit = GameManager::getRoundCredit(round);
+    int credit = m_gameManager->getRoundInfos()[round].creditWorth;
     const auto &assets = m_gameManager->getPlayerAssets();
 
     if (auto *lbl = findChild<QLabel *>("roundCount"))
@@ -376,7 +376,7 @@ void MainWindow::refreshSceneLabels()
         lbl->setText(QString("已修学分：%1").arg(m_gameManager->getPreviousCredits()));
     if (auto *lbl = findChild<QLabel *>("gpa"))
         lbl->setText(QString("GPA：%1").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
-    if (auto *lbl = findChild<QLabel *>("roundValue"))
+    if (auto *lbl = findChild<QLabel *>("onBattleGroundChessCount"))
         lbl->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
     if (auto *lbl = findChild<QLabel *>("goldCount"))
         lbl->setText(QString("金币：%1").arg(assets.gold));
@@ -638,7 +638,7 @@ void MainWindow::showRoundResult(bool victory)
                     .arg(towerHp)
                     .arg(m_gameManager->getMaxTowerHp())
                     .arg(gpa, 0, 'f', 2)
-                    .arg(GameManager::getRoundCredit(m_gameManager->getRoundNumber())));
+                    .arg(m_gameManager->getRoundInfos()[m_gameManager->getRoundNumber()].creditWorth));
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
 

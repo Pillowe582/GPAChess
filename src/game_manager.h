@@ -35,7 +35,7 @@ public:
     /// 进入下一轮准备阶段（ShowResult → Finish → Prepare）
     void nextRound();
 
-    // Getters
+    // % Getters
     RoundPhase getCurrentPhase() const { return m_phase; }
     int getRoundNumber() const { return m_roundNumber; }
     int getTowerHp() const;
@@ -45,12 +45,20 @@ public:
     const std::vector<EnemyInstance> &getEnemies() const { return m_enemies; }
     Renderer *getRenderer() const { return m_renderer; }
 
-    // Setters
+    const std::vector<RoundInfo> &getRoundInfos() const { return m_roundInfos; }
+
+    /// 本回合获得的金币/经验（与回合开始前快照对比）
+    int getRoundGoldEarned() const { return m_player.gold - m_roundStartGold; }
+    int getRoundExpEarned() const { return m_player.exp - m_roundStartExp; }
+
+    // % Setters
+
     /// 设置渲染器引用（由 MainWindow 注入）
     void setRenderer(Renderer *r) { m_renderer = r; }
 
     quint32 gameSeed() const { return m_gameSeed; }
 
+    // % 工具方法
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
 
@@ -73,25 +81,8 @@ public:
     /// 出售单位，返回获得的费用
     int sellUnit(int uuid);
 
-    /// 本回合获得的金币/经验（与回合开始前快照对比）
-    int getRoundGoldEarned() const { return m_player.gold - m_roundStartGold; }
-    int getRoundExpEarned() const { return m_player.exp - m_roundStartExp; }
-
-    /// 本回合学分值（第1回合2分，第2回合3分，第3回合5分）
-    static int getRoundCredit(int round)
-    {
-        switch (round)
-        {
-        case 1:
-            return 2;
-        case 2:
-            return 3;
-        case 3:
-            return 5;
-        default:
-            return 0;
-        }
-    }
+    /// 本回合学分值（随机）
+    int generateRoundCredit(int round);
     int getMaxRounds() const { return m_maxRounds; }
 
     // 本回合学分绩 = (塔血百分比 × 4.0) 满分4.0
@@ -138,6 +129,7 @@ private:
     void tickBehaviors(double deltaSeconds);
     bool checkCombatEndConditions(bool &outVictory);
     void resetUnitsForNextRound();
+    void generateRoundInfos(std::vector<RoundInfo> &out, int maxRounds); // 生成每轮的学分值和敌人数量
 
 private:
     QTimer *m_tickTimer;
@@ -149,6 +141,7 @@ private:
     PlayerAssets m_player;
     std::vector<EnemyInstance> m_enemies;
     std::vector<EnemyConfig> m_enemyConfigs;
+    std::vector<RoundInfo> m_roundInfos;
 
     ChessInstance *m_tower = nullptr; // 指向 ownedChesses 中的塔实例
     double m_towerHpMultiplier = 1.0;
@@ -157,7 +150,10 @@ private:
     int m_guaranteedGold = 10;
     int m_pendingGold = 0; // 战斗中获得的临时金币
     int m_pendingExp = 0;  // 战斗中获得的临时经验
-    int m_maxRounds = 3;
+
+    // 最大回合数
+    int m_maxRounds = 10;
+
     double m_weightedGpaSum = 0.0; // Σ(学分×学分绩)
     int m_totalCredits = 0;        // 已完成回合的学分之和
 

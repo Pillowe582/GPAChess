@@ -48,6 +48,9 @@ void GameManager::initialize()
     m_enemies.clear();
     m_enemyConfigs.clear();
 
+    // 生成本局所有回合信息
+    generateRoundInfos(m_roundInfos, m_maxRounds);
+
     // 重置玩家资源
     m_player.gold = 100;
     m_player.exp = 0;
@@ -60,6 +63,7 @@ void GameManager::initialize()
         towerCfg.name = "Tower";
         towerCfg.baseHp = BASE_TOWER_HP * m_towerHpMultiplier;
         towerCfg.baseAtk = 100;
+        towerCfg.baseDef = 100;
         towerCfg.speed = 0;
         towerCfg.behaviorId = -1; // 塔专用
         auto towerInst = std::make_unique<ChessInstance>(towerCfg, this);
@@ -96,13 +100,38 @@ void GameManager::initialize()
     emit phaseChanged(m_phase);
 }
 
+/// @brief 生成本局所有回合信息
+/// @param roundInfos 存入回合信息向量
+/// @param maxRounds 总回合数
+void GameManager::generateRoundInfos(std::vector<RoundInfo> &roundInfos, int maxRounds)
+{
+    roundInfos.clear();
+    for (int i = 1; i <= maxRounds; ++i)
+    {
+        RoundInfo info;
+        info.roundNumber = i;
+        info.creditWorth = generateRoundCredit(i);
+        info.electiveEnemies = 3 + (i > 5 ? 1 : 0); // 可选敌人数量随回合增加
+        roundInfos.push_back(info);
+    }
+}
+/// @brief 随机出一个回合学分值（1~5cr）
+/// @param round 回合数
+/// @return 学分值
+int GameManager::generateRoundCredit(int round)
+{
+    return QRandomGenerator::global()->bounded(1, 6);
+}
+
 // % 回合逻辑
 
 /// @brief 回合开始
-/// @param roundNumber
+/// @param roundNumber 回合数
 void GameManager::startRound(int roundNumber)
 {
     m_roundNumber = roundNumber;
+
+    m_tower->baseDef = roundNumber * 200; // 塔防御随回合增加
     // 快照回合开始时的金币/经验
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
@@ -154,7 +183,7 @@ void GameManager::nextRound()
 
     // 计算本回合学分绩，并更新加权平均学分绩
     double roundGpa = getRoundGpa();
-    int credit = getRoundCredit(m_roundNumber);
+    int credit = m_roundInfos[m_roundNumber].creditWorth;
     m_weightedGpaSum += roundGpa * credit;
     m_totalCredits += credit;
 
