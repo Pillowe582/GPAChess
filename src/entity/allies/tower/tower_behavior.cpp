@@ -31,11 +31,11 @@ void TowerBehavior::tick(double dt,
     if (it == enemies.end())
         return;
 
-    // 伤害 = 30 × (1 + (1 - HP%) × 3)
+    // 伤害 = 100 × (1 + (1 - HP%) × 100)
     double hpRatio = self.maxHp.getFinal() > 0
                          ? self.currentHp / self.maxHp.getFinal()
                          : 1.0;
-    int dmg = static_cast<int>(30.0 * (1.0 + (1.0 - hpRatio) * 3.0));
+    int dmg = static_cast<int>(100.0 * (1.0 + (1.0 - hpRatio) * 100.0));
 
     it->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#4696FF")});
 
@@ -50,13 +50,12 @@ void TowerBehavior::tick(double dt,
 }
 
 // ========== Queue 渲染 ==========
-void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &r,
+void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
                                double x, double y)
 {
-    const double tx = 10.0, ts = 70.0, ty = 400.0 - ts / 2.0;
-    r.queueRect(tx, ty, ts, ts, QColor(40, 100, 220, 200), 5);
-
-    r.queueRect(tx, ty - 12.0, ts, 6.0, QColor(40, 40, 40, 200), 6);
+    const double tx = 10.0, ts = 64.0, ty = 400.0 - ts / 2.0;
+    QString texturePath = ":/texture/entity/tower.png";
+    renderer.queueImage(texturePath, tx + ts / 2.0, ty + ts / 2.0, 0.0, 0.5, Qt::AlignCenter, 10);
 
     double hpRatio = self.maxHp.getFinal() > 0
                          ? std::clamp(self.currentHp / self.maxHp.getFinal(), 0.0, 1.0)
@@ -64,39 +63,17 @@ void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &r,
     QColor hpC = hpRatio > 0.5    ? QColor(80, 180, 255)
                  : hpRatio > 0.25 ? QColor(255, 200, 60)
                                   : QColor(255, 70, 70);
-    r.queueRect(tx, ty - 12.0, ts * hpRatio, 6.0, hpC, 7);
+    renderer.queueRect(tx, ty - 12.0, ts * hpRatio, 6.0, hpC, 7);
 
     double gpa = hpRatio * 4.0;
-    r.queueText(QString::number(gpa, 'f', 1),
-                tx + ts / 2.0 - 10.0, ty + ts / 2.0 - 10.0,
-                Qt::black, 8);
+    renderer.queueText(QString::number(gpa, 'f', 1),
+                       tx + ts / 2.0 - 10.0, ty + ts / 2.0 - 10.0,
+                       Qt::black, 8);
 }
 
 // ========== Paint 渲染 ==========
 void TowerBehavior::renderSelf(const ChessInstance &self, QPainter &p,
                                double radius)
 {
-    p.setRenderHint(QPainter::Antialiasing);
-    p.setPen(QPen(QColor(80, 160, 255), 3.0));
-    p.setBrush(QColor(40, 100, 220, 200));
-    p.drawRect(QRectF(-35, -35, 70, 70));
-
-    double hpRatio = self.maxHp.getFinal() > 0
-                         ? std::clamp(self.currentHp / self.maxHp.getFinal(), 0.0, 1.0)
-                         : 0.0;
-    QColor hpC = hpRatio > 0.5    ? QColor(80, 180, 255)
-                 : hpRatio > 0.25 ? QColor(255, 200, 60)
-                                  : QColor(255, 70, 70);
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(40, 40, 40, 200));
-    p.drawRect(QRectF(-35, -47, 70, 6));
-    p.setBrush(hpC);
-    p.drawRect(QRectF(-35, -47, 70 * hpRatio, 6));
-
-    QFont f("Microsoft YaHei", 14);
-    f.setBold(true);
-    p.setFont(f);
-    p.setPen(Qt::black);
-    p.drawText(QRectF(-35, -30, 70, 60), Qt::AlignCenter,
-               QString::number(hpRatio * 4.0, 'f', 1));
+    return; // 塔不使用 Paint 渲染
 }

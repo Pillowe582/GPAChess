@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "print.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsEllipseItem>
@@ -35,6 +36,7 @@ QPixmap Renderer::loadImage(const QString &path)
         return pix;
     }
 
+    print("从文件加载图片失败：" + path);
     // 如果加载失败，返回空 pixmap
     return QPixmap();
 }
@@ -98,7 +100,9 @@ void Renderer::flush()
             // 加载图片
             QPixmap pix = loadImage(q.text);
             if (pix.isNull())
+            {
                 break; // 加载失败，跳过
+            }
 
             double scale = q.param1; // scale
             double w = 128 * scale;

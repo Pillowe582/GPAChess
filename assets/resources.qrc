@@ -6,11 +6,14 @@
         <file>texture/entity/allyB.png</file>
         <file>texture/entity/enemyA.png</file>
         <file>texture/entity/enemyB.png</file>
-        
+        <file>texture/entity/WXF.png</file>
+        <file>texture/entity/tower.png</file>
+
         <!-- Projectile textures -->
         <file>texture/projectile/bullet.png</file>
         <file>texture/projectile/diamond_sword.png</file>
-        
+        <file>texture/projectile/oint.png</file>
+
         <!-- Battleground textures -->
         <file>texture/battleground/sand.png</file>
     </qresource>

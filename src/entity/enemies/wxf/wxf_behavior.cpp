@@ -1,17 +1,14 @@
-#include "alpha_behavior.h"
+#include "wxf_behavior.h"
 #include "state.h"
 #include "renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
-void AlphaEnemy::tick(double dt, EnemyInstance &self,
-                      std::vector<std::unique_ptr<ChessInstance>> &allies,
-                      Renderer &renderer,
-                      int &pendingGold, int &pendingExp)
+void WXFEnemy::tick(double dt, EnemyInstance &self,
+                    std::vector<std::unique_ptr<ChessInstance>> &allies,
+                    Renderer &renderer,
+                    int &pendingGold, int &pendingExp)
 {
-    auto rng = QRandomGenerator::global();
-    auto jitter = [rng]() -> double
-    { return (rng->generateDouble() - 0.5) * 30.0; };
 
     // ====== 近战逻辑 ======
     m_cooldown = std::max(0.0, m_cooldown - dt);
@@ -19,10 +16,12 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
     // ---- 武器挥砍动画中 ----
     if (m_weapon.active)
     {
-        m_weapon.elapsed += dt;
-        m_weapon.angle += (2.0 * 3.14159265) * dt / 0.2;
 
-        int currentRot = static_cast<int>(m_weapon.angle / (2.0 * 3.14159265));
+        m_weapon.elapsed += dt;
+        m_weapon.angle += (m_weapon.rotSpeed * 3.14159265) * dt / 0.2;
+        m_weapon.rotSpeed += m_weapon.rotSpeed * dt; // 加速旋转
+
+        int currentRot = -1 * static_cast<int>(m_weapon.angle / (2.0 * 3.14159265));
         if (currentRot > m_weapon.rotationsDone)
         {
             m_weapon.rotationsDone = currentRot;
@@ -32,18 +31,19 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
                     continue;
                 double dx = ally->transform.x - self.transform.x;
                 double dy = ally->transform.y - self.transform.y;
-                if (std::sqrt(dx * dx + dy * dy) < 120.0)
+                if (std::sqrt(dx * dx + dy * dy) < 200.0)
                 {
                     int dmg = self.atk.getFinal();
-                    ally->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#FFFFFF")});
+                    ally->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#00ffc3")});
 
                     break;
                 }
             }
         }
 
-        if (m_weapon.rotationsDone >= 3)
+        if (m_weapon.rotationsDone >= 5)
         {
+            m_weapon.rotSpeed = -0.5f; // 重置旋转速度
             m_weapon.active = false;
             int spd = self.baseAttackSpeed;
             m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
@@ -51,9 +51,9 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
 
         // 渲染：旋转的钻石剑图片
         double rotationDeg = m_weapon.angle * 180.0 / 3.14159265;
-        renderer.queueImage(":/texture/projectile/diamond_sword.png",
-                            self.transform.x, self.transform.y,
-                            rotationDeg, 1.0, Qt::AlignLeft, 90);
+        renderer.queueImage(":/texture/projectile/oint.png",
+                            self.transform.x + 50 * m_targetVec.normalized().x(), self.transform.y + 50 * m_targetVec.normalized().y(),
+                            rotationDeg, 2.0, Qt::AlignCenter, 90);
         return;
     }
 
@@ -75,6 +75,7 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
         {
             bestDist = d;
             target = ally.get();
+            m_targetVec = QVector2D(dx, dy);
         }
     }
 
@@ -92,6 +93,7 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
             {
                 bestDist = d;
                 target = ally.get();
+                m_targetVec = QVector2D(dx, dy);
             }
         }
     }
@@ -110,7 +112,14 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
         self.transform.x += dx / dist * spd;
         self.transform.y += dy / dist * spd;
     }
-    else
+    else if (dist < 50.0)
+    {
+        double spd = -self.speed * 100.0 * dt;
+        self.transform.x -= dx / dist * spd;
+        self.transform.y -= dy / dist * spd;
+    }
+
+    if (dist < 100.0)
     {
         m_weapon.active = true;
         m_weapon.angle = 0.0;
