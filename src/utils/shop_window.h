@@ -29,7 +29,7 @@ signals:
     void shopClosed();
 
 private slots:
-    void onShopItemClicked(const QModelIndex &index);
+    void onShopChessItemClicked(const QModelIndex &index);
     void onPurchaseClicked();
     void onRefreshClicked();
 

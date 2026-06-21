@@ -49,23 +49,9 @@ void GameManager::initialize()
     m_enemyConfigs.clear();
 
     // 重置玩家资源
-    m_player.gold = 10;
+    m_player.gold = 100;
     m_player.exp = 0;
     m_player.ownedChesses.clear();
-
-    // 开局免费给n个随机角色放在备战席
-    const auto &pool = m_database->allAllyConfigs();
-    const int starterCount = 2;
-    for (int i = 0; i < starterCount && !pool.empty(); ++i)
-    {
-        int idx = m_rng.bounded(static_cast<int>(pool.size()));
-        auto inst = std::make_unique<ChessInstance>(pool[idx], this);
-
-        inst->deployed = false;
-        inst->benchSlot = i;
-        inst->behavior.reset(createAllyBehavior(inst->behaviorId));
-        m_player.ownedChesses.push_back(std::move(inst));
-    }
 
     // 创建塔作为特殊棋子
     {
@@ -92,6 +78,22 @@ void GameManager::initialize()
                 break;
             }
     }
+    
+    // 开局免费给n个随机角色放在备战席
+    const auto &pool = m_database->allAllyConfigs();
+    const int starterCount = 2;
+    for (int i = 0; i < starterCount && !pool.empty(); ++i)
+    {
+        int idx = m_rng.bounded(static_cast<int>(pool.size()));
+        auto inst = std::make_unique<ChessInstance>(pool[idx], this);
+
+        inst->deployed = false;
+        inst->benchSlot = i;
+        inst->behavior.reset(createAllyBehavior(inst->behaviorId));
+        m_player.ownedChesses.push_back(std::move(inst));
+    }
+
+    
 
     emit phaseChanged(m_phase);
 }
@@ -281,7 +283,7 @@ void GameManager::tickBehaviors(double deltaSeconds)
     for (auto &ally : m_player.ownedChesses)
         if (ally->isAlive && ally->deployed && ally->behavior)
             ally->behavior->tick(deltaSeconds, *ally, m_enemies, *m_renderer,
-                                m_pendingGold, m_pendingExp);
+                                 m_pendingGold, m_pendingExp);
 
     // Enemy
     for (auto &enemy : m_enemies)
@@ -329,15 +331,24 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
 /// @param onClose 商店关闭时的回调函数
 void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(int))
 {
+    // 仅在准备阶段允许打开商店
+    if (m_phase != RoundPhase::Prepare)
+    {
+        print("Warning: Shop can only be opened during Prepare phase!");
+        return;
+    }
+
+    // 暂停定时器，避免在修改 ownedChesses 时发生竞态条件
+    bool wasTimerActive = m_tickTimer->isActive();
+    if (wasTimerActive)
+        m_tickTimer->stop();
 
     if (!m_database)
     {
         print("Error: 打开商店失败，DatabaseManager未初始化");
-        return;
-    }
-    if (getCurrentPhase() != RoundPhase::Prepare)
-    {
-        print("Error: 商店仅能在准备阶段打开");
+        // 如果原本定时器是激活的，恢复它
+        if (wasTimerActive)
+            m_tickTimer->start();
         return;
     }
     if (m_shopWindow)
@@ -346,6 +357,9 @@ void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(i
         m_shopWindow->show();
         m_shopWindow->raise();
         m_shopWindow->activateWindow();
+        // 恢复定时器状态
+        if (wasTimerActive)
+            m_tickTimer->start();
         return;
     }
     m_shopWindow = new ShopWindow(m_database, this);
@@ -360,13 +374,17 @@ void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(i
                 } });
 
     // 商店关闭回调
-    connect(m_shopWindow, &ShopWindow::shopClosed, this, [this, mainWindow, onClose]()
+    connect(m_shopWindow, &ShopWindow::shopClosed, this, [this, mainWindow, onClose, wasTimerActive]()
             {
                 checkAndMergeStars();
                 if (mainWindow && onClose)
                 {
                     (mainWindow->*onClose)(MainWindow::RefreshAll);
-                } });
+                }
+                // 商店关闭后，如果之前定时器是激活的，则重新启动
+                if (wasTimerActive)
+                    m_tickTimer->start();
+            });
     m_shopWindow->refreshShop();
     m_shopWindow->show();
 }
@@ -381,7 +399,7 @@ void GameManager::checkAndMergeStars()
         for (size_t i = 0; i < units.size(); ++i)
         {
             // 跳过塔和死亡单位
-            if (!units[i]->isAlive || units[i]->isTower)
+            if (!units[i] || !units[i]->isAlive || units[i]->isTower)
                 continue;
             int cfgId = units[i]->configId;
             int star = units[i]->starLevel;
@@ -391,7 +409,7 @@ void GameManager::checkAndMergeStars()
             {
                 if (i == j)
                     continue;
-                if (!units[j]->isAlive || units[j]->isTower)
+                if (!units[j] || !units[j]->isAlive || units[j]->isTower)
                     continue;
                 if (units[j]->configId == cfgId && units[j]->starLevel == star)
                     same.push_back(j);
@@ -406,6 +424,7 @@ void GameManager::checkAndMergeStars()
                 size_t target = a;
                 auto rank = [&](size_t idx) -> int
                 {
+                    if (!units[idx]) return 999;
                     if (units[idx]->deployed)
                         return 0;
                     return units[idx]->benchSlot + 1;
@@ -415,6 +434,7 @@ void GameManager::checkAndMergeStars()
                 if (rank(c) < rank(target))
                     target = c;
 
+                if (!units[target]) continue; // 安全检查
                 units[target]->starLevel++;
                 units[target]->calculateBaseStatsByStar();
                 units[target]->resetStatus();
@@ -433,15 +453,19 @@ void GameManager::checkAndMergeStars()
                 }
                 if (d1 > d2)
                     std::swap(d1, d2);
+                
+                // 先删除较大索引，再删除较小索引，避免索引偏移
                 units.erase(units.begin() + static_cast<long long>(d2));
                 units.erase(units.begin() + static_cast<long long>(d1));
 
-                print(QString("Merged 3x %1★%2 → %3★%4 (uuid=%5)")
-                          .arg(star)
-                          .arg(cfgId)
-                          .arg(star + 1)
-                          .arg(cfgId)
-                          .arg(units[target]->getUuid()));
+                if (units[target]) {
+                    print(QString("Merged 3x %1★%2 → %3★%4 (uuid=%5)")
+                              .arg(star)
+                              .arg(cfgId)
+                              .arg(star + 1)
+                              .arg(cfgId)
+                              .arg(units[target]->getUuid()));
+                }
                 merged = true;
                 break;
             }

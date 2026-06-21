@@ -21,7 +21,7 @@ ShopWindow::ShopWindow(DatabaseManager *db, GameManager *gm, QWidget *parent)
     ui->shopChessList->setModel(m_listModel);
     ui->shopChessList->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    connect(ui->shopChessList, &QListView::clicked, this, &ShopWindow::onShopItemClicked);
+    connect(ui->shopChessList, &QListView::clicked, this, &ShopWindow::onShopChessItemClicked);
     connect(ui->purchaseButton, &QPushButton::clicked, this, &ShopWindow::onPurchaseClicked);
     connect(ui->shopRefreshButton, &QPushButton::clicked, this, &ShopWindow::onRefreshClicked);
     updateGoldLabel();
@@ -30,6 +30,17 @@ ShopWindow::ShopWindow(DatabaseManager *db, GameManager *gm, QWidget *parent)
 
 ShopWindow::~ShopWindow() { delete ui; }
 
+// % 刷新商店
+
+void ShopWindow::onRefreshClicked()
+{
+    if (m_gameManager->getPlayerAssets().gold < 2)
+        return;
+    m_gameManager->getPlayerAssets().gold -= 2;
+    refreshShop();
+}
+
+/// @brief 刷新商店物品列表
 void ShopWindow::refreshShop()
 {
     m_currentShopItems.clear();
@@ -54,7 +65,8 @@ void ShopWindow::refreshShop()
     updateGoldLabel();
 }
 
-void ShopWindow::onShopItemClicked(const QModelIndex &index)
+//  % 展示角色信息
+void ShopWindow::onShopChessItemClicked(const QModelIndex &index)
 {
     int row = index.row();
     if (row < 0 || row >= static_cast<int>(m_currentShopItems.size()))
@@ -73,6 +85,7 @@ void ShopWindow::onShopItemClicked(const QModelIndex &index)
     ui->purchaseButton->setEnabled(true);
 }
 
+// % 购买角色
 void ShopWindow::onPurchaseClicked()
 {
     if (m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(m_currentShopItems.size()))
@@ -81,6 +94,7 @@ void ShopWindow::onPurchaseClicked()
     const AllyConfig &cfg = m_currentShopItems[m_selectedIndex];
     auto &assets = m_gameManager->getPlayerAssets();
 
+    // 检查金币和备战席是否足够
     if (assets.gold < cfg.cost)
     {
         QMessageBox::warning(this, QStringLiteral("金币不足"), QStringLiteral("你没有足够的金币购买此角色！"));
@@ -92,41 +106,34 @@ void ShopWindow::onPurchaseClicked()
         return;
     }
 
+    // 扣除金币，创建棋子实例并放入备战席
     assets.gold -= cfg.cost;
     int slot = assets.firstEmptyBenchSlot();
     auto inst = std::make_unique<ChessInstance>(cfg, m_gameManager);
-
-    // 连接新购买单位的受伤信号
-    // QObject::connect(inst.get(), &LivingEntity::receivedDamage, m_gameManager, &GameManager::receivedDamage);
 
     inst->deployed = false;
     inst->benchSlot = slot;
     inst->behavior.reset(createAllyBehavior(inst->behaviorId));
     assets.ownedChesses.push_back(std::move(inst));
 
-    print(QString("Purchased %1 for %2 gold, slot %3").arg(cfg.name).arg(cfg.cost).arg(slot));
+    print(QString("花费 %1 金币购买 %2，位置 %3，目前共有 %4 个角色").arg(cfg.cost).arg(cfg.name).arg(slot).arg(assets.ownedChesses.size()));
 
+    // 检查是否可以升星合并
     m_gameManager->checkAndMergeStars();
 
+    // 更新商店列表数据
     m_currentShopItems.erase(m_currentShopItems.begin() + m_selectedIndex);
     m_selectedIndex = -1;
+
+    // 刷新商店UI显示
     ui->descriptionLabel->setText("");
     ui->propertyLabel->setText("");
     ui->purchaseButton->setEnabled(false);
-
     QStringList names;
     for (const auto &item : m_currentShopItems)
         names << QString("%1  ￥%2").arg(item.name).arg(item.cost);
     m_listModel->setStringList(names);
     updateGoldLabel();
-}
-
-void ShopWindow::onRefreshClicked()
-{
-    if (m_gameManager->getPlayerAssets().gold < 2)
-        return;
-    m_gameManager->getPlayerAssets().gold -= 2;
-    refreshShop();
 }
 
 void ShopWindow::updateGoldLabel()
@@ -136,6 +143,7 @@ void ShopWindow::updateGoldLabel()
     ui->shopRefreshButton->setEnabled(gold >= 2);
 }
 
+// % 窗口事件
 void ShopWindow::showEvent(QShowEvent *event)
 {
     QMainWindow::showEvent(event);
