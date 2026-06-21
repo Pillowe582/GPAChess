@@ -35,11 +35,8 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
                 if (std::sqrt(dx * dx + dy * dy) < 120.0)
                 {
                     int dmg = self.atk.getFinal();
-                    ally.takeDamage(dmg);
-                    renderer.queueSplash(QString("-%1").arg(dmg),
-                                         ally.transform.x + jitter(),
-                                         ally.transform.y - 20 + jitter(),
-                                         QColor("#FFFFFF"));
+                    ally.dealDamage(dmg, DamageType{DamageType::Physical, QColor("#FFFFFF")});
+
                     break;
                 }
             }
@@ -63,12 +60,13 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
     if (m_cooldown > 0.0)
         return;
 
-    // ---- 找最近我方单位 ----
+    // ---- 找最近我方单位（排除塔）----
     ChessInstance *target = nullptr;
     double bestDist = 1e18;
     for (auto &ally : allies)
     {
-        if (!ally.isAlive || !ally.deployed)
+        // 跳过塔，优先攻击普通单位
+        if (!ally.isAlive || !ally.deployed || ally.isTower)
             continue;
         double dx = ally.transform.x - self.transform.x;
         double dy = ally.transform.y - self.transform.y;
@@ -79,6 +77,25 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
             target = &ally;
         }
     }
+
+    // 如果所有非塔单位都阵亡，则攻击塔
+    if (!target)
+    {
+        for (auto &ally : allies)
+        {
+            if (!ally.isAlive || !ally.deployed || !ally.isTower)
+                continue;
+            double dx = ally.transform.x - self.transform.x;
+            double dy = ally.transform.y - self.transform.y;
+            double d = dx * dx + dy * dy;
+            if (d < bestDist)
+            {
+                bestDist = d;
+                target = &ally;
+            }
+        }
+    }
+
     if (!target)
         return;
 

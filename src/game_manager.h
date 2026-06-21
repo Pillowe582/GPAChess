@@ -35,14 +35,17 @@ public:
     /// 进入下一轮准备阶段（ShowResult → Finish → Prepare）
     void nextRound();
 
+    // Getters
     RoundPhase getCurrentPhase() const { return m_phase; }
     int getRoundNumber() const { return m_roundNumber; }
-    int getTowerHp() const { return m_towerHp; }
-    int getMaxTowerHp() const { return m_towerMaxHp; }
+    int getTowerHp() const;
+    int getMaxTowerHp() const;
     PlayerAssets &getPlayerAssets() { return m_player; }
     const PlayerAssets &getPlayerAssets() const { return m_player; }
     const std::vector<EnemyInstance> &getEnemies() const { return m_enemies; }
+    Renderer *getRenderer() const { return m_renderer; }
 
+    // Setters
     /// 设置渲染器引用（由 MainWindow 注入）
     void setRenderer(Renderer *r) { m_renderer = r; }
 
@@ -94,9 +97,11 @@ public:
     // 本回合学分绩 = (塔血百分比 × 4.0) 满分4.0
     double getRoundGpa() const
     {
-        if (m_towerMaxHp <= 0)
+        if (!m_tower)
             return 0.0;
-        double ratio = static_cast<double>(m_towerHp) / static_cast<double>(m_towerMaxHp);
+        double ratio = m_tower->maxHp.getFinal() > 0
+                           ? m_tower->currentHp / m_tower->maxHp.getFinal()
+                           : 0.0;
         if (ratio < 0.0)
             ratio = 0.0;
         return ratio * 4.0;
@@ -145,12 +150,8 @@ private:
     std::vector<EnemyInstance> m_enemies;
     std::vector<EnemyConfig> m_enemyConfigs;
 
-    // 塔状态（纯数值，不建模为实体）
-    int m_towerHp = BASE_TOWER_HP;
-    int m_towerMaxHp = BASE_TOWER_HP;
-    double m_towerAttackCooldown = 0.0;
+    ChessInstance *m_tower = nullptr; // 指向 ownedChesses 中的塔实例
     double m_towerHpMultiplier = 1.0;
-    std::unique_ptr<TowerBehavior> m_towerBehavior; // 塔行为策略
     int m_roundStartGold = 0;
     int m_roundStartExp = 0;
     int m_guaranteedGold = 10;

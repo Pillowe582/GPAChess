@@ -49,12 +49,13 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
     if (m_cooldown > 0.0)
         return;
 
-    // ====== 找最远我方单位 ======
+    // ====== 找最远我方单位（排除塔）======
     ChessInstance *target = nullptr;
     double bestDist = -1.0;
     for (auto &a : allies)
     {
-        if (!a.isAlive || !a.deployed)
+        // 跳过塔，优先攻击普通单位
+        if (!a.isAlive || !a.deployed || a.isTower)
             continue;
         double dx = a.transform.x - self.transform.x;
         double dy = a.transform.y - self.transform.y;
@@ -66,17 +67,29 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
         }
     }
 
+    // 如果所有非塔单位都阵亡，则攻击塔
+    if (!target)
+    {
+        for (auto &a : allies)
+        {
+            if (!a.isAlive || !a.deployed || !a.isTower)
+                continue;
+            double dx = a.transform.x - self.transform.x;
+            double dy = a.transform.y - self.transform.y;
+            double d = std::sqrt(dx * dx + dy * dy);
+            if (d > bestDist)
+            {
+                bestDist = d;
+                target = &a;
+            }
+        }
+    }
+
     int atkSpd = self.baseAttackSpeed;
     double interval = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;
 
     if (!target)
     {
-        auto rng2 = QRandomGenerator::global();
-        auto j2 = [rng2]() -> double
-        { return (rng2->generateDouble() - 0.5) * 30.0; };
-        int dmg = self.atk.getFinal();
-        towerHp -= dmg;
-        renderer.queueSplash(QString("-%1").arg(dmg), 80.0 + j2(), 400.0 + j2(), QColor("#FFFFFF"));
         m_cooldown = interval;
         return;
     }

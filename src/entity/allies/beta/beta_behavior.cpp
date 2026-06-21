@@ -34,11 +34,7 @@ void BetaAlly::tick(double dt, ChessInstance &self,
             double dy = b.y - enemy.transform.y;
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
-                enemy.takeDamage(b.damage);
-                renderer.queueSplash(QString("-%1").arg(b.damage),
-                                     enemy.transform.x + jitter(),
-                                     enemy.transform.y - 20 + jitter(),
-                                     QColor("#64DC50"));
+                enemy.dealDamage(b.damage);
                 if (!enemy.isAlive)
                 {
                     if (rng->bounded(10) == 0)

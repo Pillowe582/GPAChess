@@ -34,11 +34,7 @@ struct Transform
     double rot = 0;
     double scaleX = 1.0;
     double scaleY = 1.0;
-    void reset()
-    {
-        x = y = rot = 0;
-        scaleX = scaleY = 1.0;
-    }
+    void reset();
 };
 
 struct DamageType
@@ -58,7 +54,7 @@ public:
     double base = 0;
     double flatBonus = 0;
     float percentBonus = 0.0f;
-    double getFinal() const { return (base + flatBonus) * (1.0f + percentBonus); }
+    double getFinal() const;
 };
 
 // ============================================================================
@@ -95,10 +91,10 @@ public:
 };
 
 // ============================================================================
-// % 运行时实体（Unity 风格层级）
+// % 运行时实体
 // ============================================================================
 
-/// 所有场景物体的基类 —— 类似 Unity GameObject
+/// 所有场景物体的基类
 class BaseEntity
 {
 public:
@@ -110,22 +106,15 @@ public:
     Transform transform;
 };
 
-/// 有生命的实体 —— 类似 Unity 中带 Health 组件的 GameObject
+/// 有生命的实体基类
 class LivingEntity : public BaseEntity
 {
 public:
-    LivingEntity(GameManager *mgr = nullptr) : BaseEntity(mgr)
-    {
-        static std::atomic<int> s_counter{1};
-        uuid = s_counter.fetch_add(1);
-        currentHp = maxHp.getFinal();
-        currentDef = maxDef.getFinal();
-        currentSpeed = maxSpeed.getFinal();
-    }
+    LivingEntity(GameManager *mgr = nullptr);
 
     // ---- 标识 ----
     int uuid = 0;
-    int getUuid() const { return uuid; }
+    int getUuid() const;
 
     // ---- 属性 ----
     Attribute maxHp;
@@ -137,47 +126,25 @@ public:
     bool isAlive = true;
 
     // ---- getters ----
-    double getMaxHp() const { return maxHp.getFinal(); }
-    double getCurrentHp() const { return currentHp; }
-    double getCurrentDef() const { return currentDef; }
+    double getMaxHp() const;
+    double getCurrentHp() const;
+    double getCurrentDef() const;
 
     // ---- 便捷 Transform 访问 ----
-    double getX() const { return transform.x; }
-    double getY() const { return transform.y; }
-    void setX(double v) { transform.x = v; }
-    void setY(double v) { transform.y = v; }
-    void setPosition(double x, double y)
-    {
-        transform.x = x;
-        transform.y = y;
-    }
+    double getX() const;
+    double getY() const;
+    void setX(double v);
+    void setY(double v);
+    void setPosition(double x, double y);
 
     // ---- 生命 ----
-    virtual void setDeath()
-    {
-        isAlive = false;
-        currentHp = 0;
-    }
+    virtual void setDeath();
 
-    bool stillAlive() const { return isAlive; }
+    bool stillAlive() const;
 
-    void takeDamage(double rawDamage)
-    {
-        dealDamage(rawDamage, {DamageType::Physical, QColor("#FFFFFF")});
-    }
-
-    double dealDamage(double rawDamage, DamageType type)
-    {
-        if (!isAlive)
-            return 0.0;
-        double actual = rawDamage;
-        if (type.type == DamageType::Physical)
-            actual *= 100.0 / (100.0 + currentDef);
-        currentHp -= actual;
-        if (currentHp <= 0)
-            setDeath();
-        return actual;
-    }
+    // ---- 造成伤害 ----
+    double dealDamage(double rawDamage); // 默认为物理伤害
+    double dealDamage(double rawDamage, DamageType type);
 };
 
 // ============================================================================
@@ -187,17 +154,13 @@ public:
 class ChessInstance : public AllyConfig, public LivingEntity
 {
 public:
-    explicit ChessInstance(const AllyConfig &cfg, GameManager *mgr = nullptr)
-        : AllyConfig(cfg), LivingEntity(mgr)
-    {
-        calculateBaseStatsByStar();
-        resetStatus();
-    }
+    explicit ChessInstance(const AllyConfig &cfg, GameManager *mgr = nullptr);
 
     int starLevel = 1;
     Attribute atk;
     int currentMp = 0;
     bool deployed = false;
+    bool isTower = false; // 塔标记：不占部署位，不可拖拽
     int benchSlot = -1;
 
     double savedPosX = 0, savedPosY = 0;
@@ -205,51 +168,15 @@ public:
 
     std::unique_ptr<AllyBehavior> behavior;
 
-    void calculateBaseStatsByStar()
-    {
-        // 从图鉴数值初始化
-        maxHp.base = baseHp;
-        maxDef.base = baseDef;
-        maxSpeed.base = speed;
-        atk.base = baseAtk;
-        for (int i = 1; i < starLevel; ++i)
-        {
-            maxHp.base = static_cast<int>(maxHp.base * hpGrowthMultiplier);
-            atk.base = static_cast<int>(atk.base * atkGrowthMultiplier);
-        }
-    }
-
-    void resetStatus()
-    {
-        currentHp = maxHp.getFinal();
-        currentMp = 0;
-        currentDef = maxDef.getFinal();
-        currentSpeed = maxSpeed.getFinal();
-        isAlive = true;
-        targetEnemyId = -1;
-    }
+    void calculateBaseStatsByStar();
+    void resetStatus();
 };
 
 class EnemyInstance : public EnemyConfig, public LivingEntity
 {
 public:
     EnemyInstance(const EnemyConfig &cfg, bool required, int round,
-                  GameManager *mgr = nullptr)
-        : EnemyConfig(cfg), LivingEntity(mgr), isRequired(required)
-    {
-        // 从图鉴数值初始化
-        maxHp.base = baseHp;
-        maxDef.base = baseDef;
-        maxSpeed.base = speed;
-        atk.base = baseAtk;
-        // 回合数成长
-        maxHp.base = static_cast<int>(maxHp.base * (1.0 + (round - 1) * hpGrowthMultiplier));
-        atk.base = static_cast<int>(atk.base * (1.0 + (round - 1) * atkGrowthMultiplier));
-        currentHp = maxHp.getFinal();
-        currentDef = maxDef.getFinal();
-        currentSpeed = maxSpeed.getFinal();
-        isAlive = true;
-    }
+                  GameManager *mgr = nullptr);
 
     Attribute atk;
     bool isRequired = false;
@@ -272,59 +199,17 @@ public:
     int totalCredit = 0, totalGradePoint = 0;
     std::vector<ChessInstance> ownedChesses;
 
-    int deployedCount() const
-    {
-        int n = 0;
-        for (auto &c : ownedChesses)
-            if (c.deployed)
-                ++n;
-        return n;
-    }
-    int benchCount() const
-    {
-        int n = 0;
-        for (auto &c : ownedChesses)
-            if (!c.deployed)
-                ++n;
-        return n;
-    }
-    bool battlefieldFull() const { return deployedCount() >= maxBattlefield; }
-    bool benchFull() const { return benchCount() >= maxBench; }
+    int deployedCount() const;
+    int benchCount() const;
+    bool battlefieldFull() const;
+    bool benchFull() const;
 
-    void compactBenchSlots()
-    {
-        int next = 0;
-        for (auto &c : ownedChesses)
-            if (!c.deployed)
-                c.benchSlot = next++;
-    }
+    void compactBenchSlots();
 
-    int firstEmptyBenchSlot() const
-    {
-        bool occupied[maxBench] = {};
-        for (auto &c : ownedChesses)
-            if (!c.deployed && c.benchSlot >= 0 && c.benchSlot < maxBench)
-                occupied[c.benchSlot] = true;
-        for (int i = 0; i < maxBench; ++i)
-            if (!occupied[i])
-                return i;
-        return -1;
-    }
+    int firstEmptyBenchSlot() const;
 
-    ChessInstance *getUnitByUuid(int uuid)
-    {
-        for (auto &u : ownedChesses)
-            if (u.uuid == uuid)
-                return &u;
-        return nullptr;
-    }
-    const ChessInstance *getUnitByUuid(int uuid) const
-    {
-        for (auto &u : ownedChesses)
-            if (u.uuid == uuid)
-                return &u;
-        return nullptr;
-    }
+    ChessInstance *getUnitByUuid(int uuid);
+    const ChessInstance *getUnitByUuid(int uuid) const;
 };
 
 #endif

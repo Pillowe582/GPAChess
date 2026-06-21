@@ -1,8 +1,8 @@
 #include "game_manager.h"
 #include "database_manager.h"
 #include "print.h"
-#include "entity/ally_behavior.h"
-#include "entity/enemy_behavior.h"
+#include "ally_behavior.h"
+#include "enemy_behavior.h"
 #include "allies/tower/tower_behavior.h"
 #include "renderer.h"
 
@@ -16,9 +16,6 @@ GameManager::GameManager(QObject *parent)
       m_roundNumber(1), m_phase(RoundPhase::Prepare),
       m_timeAccumulator(0.0), m_gameSeed(12345), m_rng(12345)
 {
-    m_towerHp = BASE_TOWER_HP * m_towerHpMultiplier;
-    m_towerMaxHp = m_towerHp;
-    m_towerBehavior.reset(createTowerBehavior());
     m_tickTimer->setInterval(GAME_TICK_INTERVAL_MS);
     connect(m_tickTimer, &QTimer::timeout, this, &GameManager::onTick);
 }
@@ -64,12 +61,33 @@ void GameManager::initialize()
         m_player.ownedChesses.push_back(std::move(inst));
     }
 
+    // 创建塔作为特殊棋子
+    {
+        AllyConfig towerCfg;
+        towerCfg.name = "Tower";
+        towerCfg.baseHp = BASE_TOWER_HP * m_towerHpMultiplier;
+        towerCfg.baseAtk = 30;
+        towerCfg.speed = 0;
+        towerCfg.behaviorId = -1; // 塔专用
+        ChessInstance towerInst(towerCfg, this);
+        towerInst.isTower = true;
+        towerInst.deployed = true;
+        towerInst.transform.x = 45.0;
+        towerInst.transform.y = 400.0;
+        towerInst.behavior.reset(new TowerBehavior());
+        m_player.ownedChesses.push_back(std::move(towerInst));
+        // 缓存塔指针
+        for (auto &c : m_player.ownedChesses)
+            if (c.isTower)
+            {
+                m_tower = &c;
+                break;
+            }
+    }
+
     m_enemies.clear();
     m_enemyConfigs.clear();
     m_roundNumber = 1;
-    m_towerHp = BASE_TOWER_HP * m_towerHpMultiplier;
-    m_towerMaxHp = m_towerHp;
-    m_towerAttackCooldown = 0.0;
     m_roundStartGold = 0;
     m_roundStartExp = 0;
     m_weightedGpaSum = 0.0;
@@ -79,6 +97,7 @@ void GameManager::initialize()
 }
 
 // % 回合逻辑
+
 /// @brief 回合开始
 /// @param roundNumber
 void GameManager::startRound(int roundNumber)
@@ -87,9 +106,7 @@ void GameManager::startRound(int roundNumber)
     // 快照回合开始时的金币/经验
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
-    // 每回合塔满血
-    m_towerHp = m_towerMaxHp;
-    m_towerAttackCooldown = 0.0;
+    // 每回合塔满血（和其他 ally 一起在 resetStatus 中处理）
     m_timeAccumulator = 0.0;
 
     // 快照所有已部署单位的战场位置，用于回合结束后复位
@@ -102,8 +119,10 @@ void GameManager::startRound(int roundNumber)
         }
     }
 
-    transitionPhase(RoundPhase::Combat);
+    // 先生成敌人，再切换阶段，避免 refreshAllUnits 在 enemies 未初始化时被调用
     spawnEnemies(m_roundNumber);
+
+    transitionPhase(RoundPhase::Combat);
 
     // ====== 通知所有 behavior：回合开始 ======
     for (auto &u : m_player.ownedChesses)
@@ -112,8 +131,8 @@ void GameManager::startRound(int roundNumber)
     for (auto &e : m_enemies)
         if (e.behavior)
             e.behavior->onStart();
-    if (m_towerBehavior)
-        m_towerBehavior->onStart();
+    if (m_tower && m_tower->behavior)
+        m_tower->behavior->onStart();
 
     m_tickTimer->start();
 }
@@ -170,7 +189,6 @@ void GameManager::resetUnitsForNextRound()
         }
     }
     m_enemies.clear();
-    m_towerAttackCooldown = 0.0;
     m_timeAccumulator = 0.0;
     print("All units reset for next round, formation preserved");
 }
@@ -251,9 +269,10 @@ void GameManager::executeAttackCycle(double deltaSeconds)
     if (!m_renderer)
         return;
 
-    // ═══════════ 逻辑 Phase ═══════════
+    int towerHpPlaceholder = 0;
 
-    // Ally
+    // ═══════ 逻辑 Phase ═══════
+    // Ally (含塔 —— 塔就是 isTower=true 的普通 ally)
     for (auto &ally : m_player.ownedChesses)
         if (ally.isAlive && ally.deployed && ally.behavior)
             ally.behavior->tick(deltaSeconds, ally, m_enemies, *m_renderer,
@@ -263,26 +282,15 @@ void GameManager::executeAttackCycle(double deltaSeconds)
     for (auto &enemy : m_enemies)
         if (enemy.isAlive && enemy.behavior)
             enemy.behavior->tick(deltaSeconds, enemy, m_player.ownedChesses,
-                                 *m_renderer, m_towerHp, m_pendingGold, m_pendingExp);
+                                 *m_renderer, towerHpPlaceholder, m_pendingGold, m_pendingExp);
 
-    // Tower
-    if (m_towerBehavior && m_towerHp > 0)
-        m_towerBehavior->tick(deltaSeconds, m_towerHp, m_towerMaxHp,
-                              m_towerAttackCooldown, m_enemies, *m_renderer,
-                              m_pendingGold, m_pendingExp);
-
-    // ═══════════ 渲染 Phase ═══════════
+    // ═══════ 渲染 Phase ═══════
     m_renderer->beginFrame();
-
     for (auto &enemy : m_enemies)
         if (enemy.isAlive && enemy.behavior)
             enemy.behavior->renderSelf(enemy, *m_renderer, enemy.transform.x, enemy.transform.y);
 
-    if (m_towerBehavior && m_towerHp > 0)
-        m_towerBehavior->renderSelf(m_towerHp, m_towerMaxHp, *m_renderer);
-
-    // Ally 渲染由 refreshAllUnits 在 tick 信号中处理
-    // 注意：不在这里 flush，等待 refreshAllUnits 统一 flush
+    // Ally 渲染由 refreshAllUnits 处理
 }
 
 // % 检查战斗结束
@@ -299,7 +307,7 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     }
 
     // 塔被摧毁 → 失败
-    if (m_towerHp <= 0)
+    if (m_tower && !m_tower->isAlive)
     {
         outVictory = false;
         return true;
@@ -458,6 +466,16 @@ int GameManager::sellUnit(int uuid)
         }
     }
     return 0;
+}
+
+int GameManager::getTowerHp() const
+{
+    return m_tower ? static_cast<int>(m_tower->currentHp) : 0;
+}
+
+int GameManager::getMaxTowerHp() const
+{
+    return m_tower ? static_cast<int>(m_tower->maxHp.getFinal()) : BASE_TOWER_HP;
 }
 
 GameManager::~GameManager()

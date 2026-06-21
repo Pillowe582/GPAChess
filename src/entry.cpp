@@ -320,9 +320,9 @@ void MainWindow::refreshAllUnits()
             targetPos = QPointF(cx, cy);
         }
 
-        item->setVisible(chess.stillAlive() && isPreparePhase);
+        item->setVisible(chess.stillAlive());
         item->setPos(targetPos);
-        item->setDraggable(isPreparePhase);
+        item->setDraggable(isPreparePhase && !chess.isTower);
         item->update(); // 强制触发重绘，确保图片立即更新
 
         // 视觉由 behavior 决定，entry 只提供坐标和实例引用

@@ -19,7 +19,7 @@ Renderer::Renderer(QGraphicsScene *scene, QObject *parent)
 {
 }
 
-// ========== 图片缓存 ==========
+// % 图片缓存
 
 QPixmap Renderer::loadImage(const QString &path)
 {
@@ -39,7 +39,7 @@ QPixmap Renderer::loadImage(const QString &path)
     return QPixmap();
 }
 
-// ========== 帧生命周期 ==========
+// % 帧生命周期
 
 void Renderer::beginFrame()
 {
@@ -54,6 +54,7 @@ void Renderer::beginFrame()
     }
 }
 
+// % 提交绘制
 void Renderer::flush()
 {
     for (const auto &q : m_queue)
@@ -141,7 +142,7 @@ void Renderer::flush()
         {
             QFont ftFont("Microsoft YaHei", 20);
             ftFont.setBold(true);
-            
+
             // 随机初始偏移
             auto rng = QRandomGenerator::global();
             double offsetX = (rng->generateDouble() - 0.5) * 30.0;
@@ -197,7 +198,7 @@ void Renderer::clearAll()
     beginFrame();
 }
 
-// ========== Queue 接口 ==========
+// % Queue 接口
 
 void Renderer::queueImage(const QString &path, double x, double y,
                           double rotation, double scale,
