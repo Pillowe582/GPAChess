@@ -38,61 +38,61 @@ void GameManager::initialize()
     m_rng.seed(m_gameSeed);
     print(QString("Seed: %1").arg(m_gameSeed));
 
-    // 重置玩家资源
-    m_player.gold = 10;
-    m_player.exp = 0;
-    m_player.ownedChesses.clear();
-
-    // 开局免费给n个随机角色放在备战席
-
-    const auto &pool = m_database->allAllyConfigs();
-    const int starterCount = 2;
-    for (int i = 0; i < starterCount && !pool.empty(); ++i)
-    {
-        int idx = m_rng.bounded(static_cast<int>(pool.size()));
-        ChessInstance inst(pool[idx], this);
-
-        // 连接盟友受伤信号到 GameManager
-        // connect(&inst, &LivingEntity::receivedDamage, this, &GameManager::receivedDamage);
-
-        inst.deployed = false;
-        inst.benchSlot = i;
-        inst.behavior.reset(createAllyBehavior(inst.behaviorId));
-        m_player.ownedChesses.push_back(std::move(inst));
-    }
-
-    // 创建塔作为特殊棋子
-    {
-        AllyConfig towerCfg;
-        towerCfg.name = "Tower";
-        towerCfg.baseHp = BASE_TOWER_HP * m_towerHpMultiplier;
-        towerCfg.baseAtk = 30;
-        towerCfg.speed = 0;
-        towerCfg.behaviorId = -1; // 塔专用
-        ChessInstance towerInst(towerCfg, this);
-        towerInst.isTower = true;
-        towerInst.deployed = true;
-        towerInst.transform.x = 45.0;
-        towerInst.transform.y = 400.0;
-        towerInst.behavior.reset(new TowerBehavior());
-        m_player.ownedChesses.push_back(std::move(towerInst));
-        // 缓存塔指针
-        for (auto &c : m_player.ownedChesses)
-            if (c.isTower)
-            {
-                m_tower = &c;
-                break;
-            }
-    }
-
-    m_enemies.clear();
-    m_enemyConfigs.clear();
+    // 设置本局初始值
     m_roundNumber = 1;
     m_roundStartGold = 0;
     m_roundStartExp = 0;
     m_weightedGpaSum = 0.0;
     m_totalCredits = 0;
     m_phase = RoundPhase::Prepare;
+    m_enemies.clear();
+    m_enemyConfigs.clear();
+
+    // 重置玩家资源
+    m_player.gold = 10;
+    m_player.exp = 0;
+    m_player.ownedChesses.clear();
+
+    // 开局免费给n个随机角色放在备战席
+    const auto &pool = m_database->allAllyConfigs();
+    const int starterCount = 2;
+    for (int i = 0; i < starterCount && !pool.empty(); ++i)
+    {
+        int idx = m_rng.bounded(static_cast<int>(pool.size()));
+        auto inst = std::make_unique<ChessInstance>(pool[idx], this);
+
+        inst->deployed = false;
+        inst->benchSlot = i;
+        inst->behavior.reset(createAllyBehavior(inst->behaviorId));
+        m_player.ownedChesses.push_back(std::move(inst));
+    }
+
+    // 创建塔作为特殊棋子
+    {
+        AllyConfig towerCfg;
+        towerCfg.configId = -1; // 塔的唯一ID，防止被合并
+        towerCfg.name = "Tower";
+        towerCfg.baseHp = BASE_TOWER_HP * m_towerHpMultiplier;
+        towerCfg.baseAtk = 100;
+        towerCfg.speed = 0;
+        towerCfg.behaviorId = -1; // 塔专用
+        auto towerInst = std::make_unique<ChessInstance>(towerCfg, this);
+        towerInst->isTower = true;
+        towerInst->deployed = true;
+        towerInst->transform.x = 45.0;
+        towerInst->transform.y = 400.0;
+        towerInst->behavior.reset(new TowerBehavior());
+        m_player.ownedChesses.push_back(std::move(towerInst));
+
+        // 遍历已拥有的棋子，找到塔实例并保存指针
+        for (auto &chess : m_player.ownedChesses)
+            if (chess->isTower)
+            {
+                m_tower = chess.get();
+                break;
+            }
+    }
+
     emit phaseChanged(m_phase);
 }
 
@@ -106,33 +106,28 @@ void GameManager::startRound(int roundNumber)
     // 快照回合开始时的金币/经验
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
-    // 每回合塔满血（和其他 ally 一起在 resetStatus 中处理）
     m_timeAccumulator = 0.0;
 
     // 快照所有已部署单位的战场位置，用于回合结束后复位
     for (auto &u : m_player.ownedChesses)
     {
-        if (u.deployed)
+        if (u->deployed)
         {
-            u.savedPosX = u.transform.x;
-            u.savedPosY = u.transform.y;
+            u->savedPosX = u->transform.x;
+            u->savedPosY = u->transform.y;
         }
     }
 
-    // 先生成敌人，再切换阶段，避免 refreshAllUnits 在 enemies 未初始化时被调用
+    transitionPhase(RoundPhase::Combat);
     spawnEnemies(m_roundNumber);
 
-    transitionPhase(RoundPhase::Combat);
-
     // ====== 通知所有 behavior：回合开始 ======
-    for (auto &u : m_player.ownedChesses)
-        if (u.behavior)
-            u.behavior->onStart();
+    for (const auto &u : m_player.ownedChesses)
+        if (u && u->behavior)
+            u->behavior->onStart();
     for (auto &e : m_enemies)
         if (e.behavior)
             e.behavior->onStart();
-    if (m_tower && m_tower->behavior)
-        m_tower->behavior->onStart();
 
     m_tickTimer->start();
 }
@@ -153,18 +148,25 @@ void GameManager::nextRound()
         return;
 
     transitionPhase(RoundPhase::Finish);
-    // 结算：应用积累收益 + 底薪 + 本回合学分绩
+    // 结算：应用积累收益 + 底薪
     m_player.gold += m_pendingGold + m_guaranteedGold;
     m_player.exp += m_pendingExp;
+
+    // 计算本回合学分绩，并更新加权平均学分绩
     double roundGpa = getRoundGpa();
     int credit = getRoundCredit(m_roundNumber);
     m_weightedGpaSum += roundGpa * credit;
     m_totalCredits += credit;
+
+    // 重置本回合收益
     m_pendingGold = 0;
     m_pendingExp = 0;
+
+    // 重置所有单位状态，保留阵型
     resetUnitsForNextRound();
     ++m_roundNumber;
 
+    // 如果达到最大回合数，则游戏结束
     if (m_roundNumber > m_maxRounds)
     {
         double finalGpa = m_totalCredits > 0 ? m_weightedGpaSum / m_totalCredits : 0.0;
@@ -172,6 +174,8 @@ void GameManager::nextRound()
         print(QString("Game over! Final GPA: %1").arg(finalGpa, 0, 'f', 2));
         return;
     }
+
+    // 进入下一轮准备阶段
     transitionPhase(RoundPhase::Prepare);
 }
 
@@ -180,12 +184,12 @@ void GameManager::resetUnitsForNextRound()
 {
     for (auto &unit : m_player.ownedChesses)
     {
-        unit.resetStatus();
+        unit->resetStatus();
         // 回合结束后，已部署单位回到回合开始时的位置
-        if (unit.deployed)
+        if (unit->deployed)
         {
-            unit.transform.x = unit.savedPosX;
-            unit.transform.y = unit.savedPosY;
+            unit->transform.x = unit->savedPosX;
+            unit->transform.y = unit->savedPosY;
         }
     }
     m_enemies.clear();
@@ -203,15 +207,15 @@ void GameManager::transitionPhase(RoundPhase newPhase)
     emit phaseChanged(m_phase);
 }
 
-//%敌方生成逻辑
+// % 敌方生成逻辑
 void GameManager::spawnEnemies(int roundNumber)
 {
     m_enemies.clear();
 
+    // 根据回合数决定敌方数量
     int count = 3 + (roundNumber > 5 ? 1 : 0);
     auto picked = pickRandomEnemies(count, roundNumber);
 
-    int uidBase = 1000 + roundNumber * 100;
     for (size_t i = 0; i < picked.size(); ++i)
     {
         m_enemies.emplace_back(picked[i], false, roundNumber, this);
@@ -251,7 +255,7 @@ void GameManager::onTick()
     // delta in seconds
     double delta = GAME_TICK_INTERVAL_MS / 1000.0;
     m_timeAccumulator += delta;
-    executeAttackCycle(delta);
+    tickBehaviors(delta);
     emit tick();
 
     bool victory = false;
@@ -264,25 +268,26 @@ void GameManager::onTick()
 }
 
 // % 攻击循环
-void GameManager::executeAttackCycle(double deltaSeconds)
+
+/// @brief tick 时调用，通知所有单位的行为逻辑
+/// @param deltaSeconds 逻辑间隔
+void GameManager::tickBehaviors(double deltaSeconds)
 {
     if (!m_renderer)
         return;
 
-    int towerHpPlaceholder = 0;
-
     // ═══════ 逻辑 Phase ═══════
     // Ally (含塔 —— 塔就是 isTower=true 的普通 ally)
     for (auto &ally : m_player.ownedChesses)
-        if (ally.isAlive && ally.deployed && ally.behavior)
-            ally.behavior->tick(deltaSeconds, ally, m_enemies, *m_renderer,
+        if (ally->isAlive && ally->deployed && ally->behavior)
+            ally->behavior->tick(deltaSeconds, *ally, m_enemies, *m_renderer,
                                 m_pendingGold, m_pendingExp);
 
     // Enemy
     for (auto &enemy : m_enemies)
         if (enemy.isAlive && enemy.behavior)
             enemy.behavior->tick(deltaSeconds, enemy, m_player.ownedChesses,
-                                 *m_renderer, towerHpPlaceholder, m_pendingGold, m_pendingExp);
+                                 *m_renderer, m_pendingGold, m_pendingExp);
 
     // ═══════ 渲染 Phase ═══════
     m_renderer->beginFrame();
@@ -302,6 +307,7 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     // 敌方全灭 → 胜利（无论我方是否存活，塔可以收尾）
     if (!anyEnemyAlive)
     {
+        print("必修敌人已被消灭！");
         outVictory = true;
         return true;
     }
@@ -309,6 +315,7 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     // 塔被摧毁 → 失败
     if (m_tower && !m_tower->isAlive)
     {
+        print("塔已被摧毁！");
         outVictory = false;
         return true;
     }
@@ -335,7 +342,7 @@ void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(i
     }
     if (m_shopWindow)
     {
-        print("商店窗口已存在（这对吗）");
+        print("商店窗口已存在，直接显示");
         m_shopWindow->show();
         m_shopWindow->raise();
         m_shopWindow->activateWindow();
@@ -348,6 +355,7 @@ void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(i
             {
                 if (m_shopWindow)
                 {
+                    print("回合结束，商店已刷新");
                     m_shopWindow->refreshShop();
                 } });
 
@@ -372,19 +380,20 @@ void GameManager::checkAndMergeStars()
         merged = false;
         for (size_t i = 0; i < units.size(); ++i)
         {
-            if (!units[i].isAlive)
+            // 跳过塔和死亡单位
+            if (!units[i]->isAlive || units[i]->isTower)
                 continue;
-            int cfgId = units[i].configId;
-            int star = units[i].starLevel;
+            int cfgId = units[i]->configId;
+            int star = units[i]->starLevel;
 
             std::vector<size_t> same;
             for (size_t j = 0; j < units.size(); ++j)
             {
                 if (i == j)
                     continue;
-                if (!units[j].isAlive)
+                if (!units[j]->isAlive || units[j]->isTower)
                     continue;
-                if (units[j].configId == cfgId && units[j].starLevel == star)
+                if (units[j]->configId == cfgId && units[j]->starLevel == star)
                     same.push_back(j);
                 if (same.size() >= 2)
                     break;
@@ -397,18 +406,18 @@ void GameManager::checkAndMergeStars()
                 size_t target = a;
                 auto rank = [&](size_t idx) -> int
                 {
-                    if (units[idx].deployed)
+                    if (units[idx]->deployed)
                         return 0;
-                    return units[idx].benchSlot + 1;
+                    return units[idx]->benchSlot + 1;
                 };
                 if (rank(b) < rank(target))
                     target = b;
                 if (rank(c) < rank(target))
                     target = c;
 
-                units[target].starLevel++;
-                units[target].calculateBaseStatsByStar();
-                units[target].resetStatus();
+                units[target]->starLevel++;
+                units[target]->calculateBaseStatsByStar();
+                units[target]->resetStatus();
 
                 size_t d1 = (target == a) ? b : a;
                 size_t d2 = (target == c) ? c : ((target == b) ? c : b);
@@ -432,7 +441,7 @@ void GameManager::checkAndMergeStars()
                           .arg(cfgId)
                           .arg(star + 1)
                           .arg(cfgId)
-                          .arg(units[target].getUuid()));
+                          .arg(units[target]->getUuid()));
                 merged = true;
                 break;
             }
@@ -449,10 +458,17 @@ int GameManager::sellUnit(int uuid)
     auto &units = m_player.ownedChesses;
     for (size_t i = 0; i < units.size(); ++i)
     {
-        if (units[i].getUuid() == uuid)
+        if (units[i]->getUuid() == uuid)
         {
-            int star = units[i].starLevel;
-            int cost = units[i].cost;
+            // 禁止出售塔
+            if (units[i]->isTower)
+            {
+                print("Error: Cannot sell the tower!");
+                return 0;
+            }
+
+            int star = units[i]->starLevel;
+            int cost = units[i]->cost;
             int refund = getTotalWorth(star, cost);
 
             m_player.gold += refund;
@@ -470,7 +486,13 @@ int GameManager::sellUnit(int uuid)
 
 int GameManager::getTowerHp() const
 {
-    return m_tower ? static_cast<int>(m_tower->currentHp) : 0;
+    if (m_tower)
+        return static_cast<int>(m_tower->currentHp);
+    else
+    {
+        print("Error: 未找到塔");
+        return 0;
+    }
 }
 
 int GameManager::getMaxTowerHp() const

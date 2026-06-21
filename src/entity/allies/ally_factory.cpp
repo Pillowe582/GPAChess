@@ -43,7 +43,7 @@ void AllyBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
 /// @brief 由QPainter自动调用渲染，只用于在准备阶段绘制
 /// @param self 棋子
 /// @param p QPainter对象
-/// @param radius 缩放
+/// @param scale 缩放
 void AllyBehavior::renderSelf(const ChessInstance &self, QPainter &p,
                               double scale)
 {

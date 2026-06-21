@@ -135,7 +135,7 @@ private:
     void transitionPhase(RoundPhase newPhase);
     void spawnEnemies(int roundNumber);
     std::vector<EnemyConfig> pickRandomEnemies(int count, int roundNumber);
-    void executeAttackCycle(double deltaSeconds);
+    void tickBehaviors(double deltaSeconds);
     bool checkCombatEndConditions(bool &outVictory);
     void resetUnitsForNextRound();
 

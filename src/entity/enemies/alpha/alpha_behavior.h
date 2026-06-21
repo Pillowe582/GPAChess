@@ -1,15 +1,18 @@
 #ifndef ALPHA_ENEMY_H
 #define ALPHA_ENEMY_H
 #include "entity/enemy_behavior.h"
+#include <memory>
+
+class ChessInstance;
 
 /// Alpha 敌方：近战，找最近我方单位，移动到70px后3圈武器挥砍
 class AlphaEnemy : public EnemyBehavior
 {
 public:
     void tick(double dt, EnemyInstance &self,
-              std::vector<ChessInstance> &allies,
+              std::vector<std::unique_ptr<ChessInstance>> &allies,
               Renderer &renderer,
-              int &towerHp, int &pendingGold, int &pendingExp) override;
+              int &pendingGold, int &pendingExp) override;
 
 private:
     struct Weapon

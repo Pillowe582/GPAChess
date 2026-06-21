@@ -3,6 +3,7 @@
 
 #include "entity/base_behavior.h"
 #include <vector>
+#include <memory>
 
 class ChessInstance;
 class EnemyInstance;
@@ -14,9 +15,8 @@ public:
     // ========== 逻辑 tick ==========
     virtual void tick(double dt,
                       EnemyInstance &self,
-                      std::vector<ChessInstance> &allies,
+                      std::vector<std::unique_ptr<ChessInstance>> &allies,
                       Renderer &renderer,
-                      int &towerHp,
                       int &pendingGold,
                       int &pendingExp) = 0;
 

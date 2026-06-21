@@ -243,7 +243,7 @@ public:
 |-----------|------|
 | `gold` | 金币 |
 | `exp` | 经验 |
-| `ownedChesses` | `vector<ChessInstance>` 所有棋子 |
+| `ownedChesses` | `vector<unique_ptr<ChessInstance>>` 所有棋子（指针容器） |
 | `maxBattlefield = 5` | 战场部署上限 |
 | `maxBench = 11` | 备战席槽位数 |
 
@@ -306,7 +306,7 @@ kBenchSlotStartY       = 840.0  // 第一个槽 Y 坐标（800 + 40）
 | 函数 | 说明 |
 |------|------|
 | `refreshBattleGround()` | ①清除 tag=-1 的临时项 ②遍历 `getEnemies()` 绘制敌方圆+血条+文字 ③遍历 `getPendingDraws()` 绘制 DrawCmd（Circle 画圆、RotatedRect 画旋转矩形）④更新塔学分绩 |
-| `refreshAllUnits()` | 遍历 `ownedChesses`，创建/更新 `UnitGraphicsItem`：部署的用 `posX/Y`（加插值 lerp），备战的用槽位坐标；清理已删除单位 |
+| `refreshAllUnits()` | 遍历 `ownedChesses`（指针容器），创建/更新 `UnitGraphicsItem`：部署的用 `posX/Y`（加插值 lerp），备战的用槽位坐标；清理已删除单位 |
 | `showSplashText(text,x,y,color)` | 战斗跳字：两层文字(前景+阴影) → 缩放动画 4×→1×(300ms) → 800ms 后自动删除 |
 
 #### % 拖拽交互
@@ -520,7 +520,7 @@ virtual void tick(
 virtual void tick(
     double dt,
     EnemyInstance &self,
-    std::vector<ChessInstance> &allies,     // 我方列表（可查位置、可伤害）
+    std::vector<std::unique_ptr<ChessInstance>> &allies,  // 我方列表（指针容器，可查位置、可伤害）
     std::vector<DrawCmd> &draws,            // ★ 追加渲染指令
     int &towerHp,                           // 塔血量（可扣减）
     int &pendingGold,
@@ -636,7 +636,7 @@ const std::vector<EnemyConfig> &allEnemyConfigs() const;
 
 ### 8.5 `print()` — 全局日志
 
-```cpp
+``cpp
 // src/include/print.h
 void print(const QString &msg);  // qDebug() + 时间戳前缀
 ```

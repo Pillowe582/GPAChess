@@ -5,9 +5,9 @@
 #include <QRandomGenerator>
 
 void AlphaEnemy::tick(double dt, EnemyInstance &self,
-                      std::vector<ChessInstance> &allies,
+                      std::vector<std::unique_ptr<ChessInstance>> &allies,
                       Renderer &renderer,
-                      int &towerHp, int &pendingGold, int &pendingExp)
+                      int &pendingGold, int &pendingExp)
 {
     auto rng = QRandomGenerator::global();
     auto jitter = [rng]() -> double
@@ -28,14 +28,14 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
             m_weapon.rotationsDone = currentRot;
             for (auto &ally : allies)
             {
-                if (!ally.isAlive || !ally.deployed)
+                if (!ally->isAlive || !ally->deployed)
                     continue;
-                double dx = ally.transform.x - self.transform.x;
-                double dy = ally.transform.y - self.transform.y;
+                double dx = ally->transform.x - self.transform.x;
+                double dy = ally->transform.y - self.transform.y;
                 if (std::sqrt(dx * dx + dy * dy) < 120.0)
                 {
                     int dmg = self.atk.getFinal();
-                    ally.dealDamage(dmg, DamageType{DamageType::Physical, QColor("#FFFFFF")});
+                    ally->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#FFFFFF")});
 
                     break;
                 }
@@ -66,15 +66,15 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
     for (auto &ally : allies)
     {
         // 跳过塔，优先攻击普通单位
-        if (!ally.isAlive || !ally.deployed || ally.isTower)
+        if (!ally->isAlive || !ally->deployed || ally->isTower)
             continue;
-        double dx = ally.transform.x - self.transform.x;
-        double dy = ally.transform.y - self.transform.y;
+        double dx = ally->transform.x - self.transform.x;
+        double dy = ally->transform.y - self.transform.y;
         double d = dx * dx + dy * dy;
         if (d < bestDist)
         {
             bestDist = d;
-            target = &ally;
+            target = ally.get();
         }
     }
 
@@ -83,15 +83,15 @@ void AlphaEnemy::tick(double dt, EnemyInstance &self,
     {
         for (auto &ally : allies)
         {
-            if (!ally.isAlive || !ally.deployed || !ally.isTower)
+            if (!ally->isAlive || !ally->deployed || !ally->isTower)
                 continue;
-            double dx = ally.transform.x - self.transform.x;
-            double dy = ally.transform.y - self.transform.y;
+            double dx = ally->transform.x - self.transform.x;
+            double dy = ally->transform.y - self.transform.y;
             double d = dx * dx + dy * dy;
             if (d < bestDist)
             {
                 bestDist = d;
-                target = &ally;
+                target = ally.get();
             }
         }
     }

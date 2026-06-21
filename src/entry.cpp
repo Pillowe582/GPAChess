@@ -83,13 +83,6 @@ void MainWindow::initGame()
         m_renderer = new Renderer(m_battleScene, this);
         m_gameManager->setRenderer(m_renderer);
 
-        // 受到伤害事件 -> 绘制跳字
-        connect(m_gameManager, &GameManager::receivedDamage, this,
-                [this](LivingEntity *entity, double amount, QColor color)
-                {
-                    // 处理受到伤害的逻辑
-                });
-
         // 回合阶段改变 → UI 刷新
         connect(m_gameManager, &GameManager::phaseChanged, this, [this](RoundPhase p)
                 {
@@ -133,7 +126,7 @@ MainWindow::~MainWindow()
 
 // ============================================================================
 // % UI切换
-// ============================================================================
+// ==========================================================================
 
 /// @brief 切换场景（QStackedWidget 跳转）
 /// @param scene 目标场景
@@ -159,11 +152,17 @@ QString MainWindow::assetPath(const QString &relativePath) const
     return QString("assets/%1").arg(relativePath);
 }
 
-// ============================================================================
+/// @brief 打开商店窗口（仅在准备阶段可用）
+void MainWindow::onShopOpenClicked()
+{
+    m_gameManager->openShop(this, &MainWindow::refreshScene); // 商店关闭后的回调：刷新整个场景
+}
+
+// =========================================================================
 // % 战场绘制
 // ============================================================================
 
-/// @brief 创建 QGraphicsScene 并绘制所有静态元素（背景、塔、备战席、出售区等）
+/// @brief 创建 QGraphicsScene 并绘制所有静态元素（背景、塔、备战席、出售区之类的）
 void MainWindow::setupGameScene()
 {
     QGraphicsView *battleView = ui->mainBattleGround;
@@ -192,7 +191,8 @@ void MainWindow::setupGameScene()
         const int safeMargin = 100;
         QSize targetSize(sceneSize.width() + safeMargin * 2,
                          sceneSize.height() + safeMargin * 2); // 稍微放得比战场大些
-        auto scaled = bg.scaled(targetSize, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+        auto scaled = bg.scaled(targetSize, Qt::KeepAspectRatioByExpanding,
+                                Qt::SmoothTransformation);
         auto *bgItem = m_battleScene->addPixmap(scaled);
         bgItem->setZValue(-1145);
         int offsetX = (sceneSize.width() - scaled.width()) / 2;
@@ -203,6 +203,7 @@ void MainWindow::setupGameScene()
     {
         m_battleScene->setBackgroundBrush(QBrush(QColor("#424242")));
     }
+
     // 部署区提示边框
     const double deployLeft = kBattlefieldMargin;
     const double deployTop = kBattlefieldMargin;
@@ -219,7 +220,9 @@ void MainWindow::setupGameScene()
                                                 QBrush(QColor("#00ddff") ^ 0.1));
     deployBorder->setZValue(-5);
 
+    // ============================================
     // % 备战席绘制
+    // ================================================
 
     // 备战席区域背景
     const int horizontalMargin = 50;
@@ -260,7 +263,7 @@ void MainWindow::setupGameScene()
     m_sellLabel->setZValue(2);
 }
 
-// ============================================================================
+// ===========================================================================
 // % 刷新
 // ============================================================================
 void MainWindow::refreshScene(int flags)
@@ -287,16 +290,16 @@ void MainWindow::refreshAllUnits()
 
     for (const auto &chess : allyChesses)
     {
-        currentUuids.insert(chess.getUuid());                                 // 记录当前存在的单位 UUID
-        UnitGraphicsItem *item = m_unitItems.value(chess.getUuid(), nullptr); // 查找已有的图形项
+        currentUuids.insert(chess->getUuid());                                 // 记录当前存在的单位 UUID
+        UnitGraphicsItem *item = m_unitItems.value(chess->getUuid(), nullptr); // 查找已有的图形项
 
         if (!item)
         {
             // 如果uuid对应不到图形项，则创建新的图形项并加入场景
-            item = new UnitGraphicsItem(chess.getUuid(), nullptr,
+            item = new UnitGraphicsItem(chess->getUuid(), nullptr,
                                         m_gameManager, m_renderer);
             m_battleScene->addItem(item);
-            m_unitItems[chess.getUuid()] = item;
+            m_unitItems[chess->getUuid()] = item;
             connect(item, &UnitGraphicsItem::dragStarted,
                     this, &MainWindow::onUnitDragStarted);
             connect(item, &UnitGraphicsItem::dragFinished,
@@ -306,13 +309,13 @@ void MainWindow::refreshAllUnits()
         // 计算我方棋子目标位置
         QPointF targetPos;
 
-        if (chess.deployed)
+        if (chess->deployed)
         {
-            targetPos = QPointF(chess.transform.x, chess.transform.y);
+            targetPos = QPointF(chess->transform.x, chess->transform.y);
         }
         else
         {
-            int slot = chess.benchSlot;
+            int slot = chess->benchSlot;
             if (slot < 0 || slot >= PlayerAssets::maxBench)
                 slot = 0;
             const double cx = kBenchSlotStartX + slot * kBenchSlotWidth + (kBenchSlotWidth - 8) / 2.0;
@@ -320,15 +323,15 @@ void MainWindow::refreshAllUnits()
             targetPos = QPointF(cx, cy);
         }
 
-        item->setVisible(chess.stillAlive());
+        item->setVisible(chess->isAlive);
         item->setPos(targetPos);
-        item->setDraggable(isPreparePhase && !chess.isTower);
+        item->setDraggable(isPreparePhase && !chess->isTower);
         item->update(); // 强制触发重绘，确保图片立即更新
 
         // 视觉由 behavior 决定，entry 只提供坐标和实例引用
         // 只有存活的单位才渲染
-        if (chess.stillAlive() && chess.behavior && m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
-            chess.behavior->renderSelf(chess, *m_renderer, targetPos.x(), targetPos.y());
+        if (chess->isAlive && chess->behavior && m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
+            chess->behavior->renderSelf(*chess, *m_renderer, targetPos.x(), targetPos.y());
     }
 
     // 清理已不存在的单位图形项
@@ -440,8 +443,8 @@ int MainWindow::nearestBenchSlot(QPointF scenePos) const
     // 标记已占用槽位
     bool occupied[PlayerAssets::maxBench] = {};
     for (const auto &u : units)
-        if (!u.deployed && u.benchSlot >= 0 && u.benchSlot < PlayerAssets::maxBench)
-            occupied[u.benchSlot] = true;
+        if (!u->deployed && u->benchSlot >= 0 && u->benchSlot < PlayerAssets::maxBench)
+            occupied[u->benchSlot] = true;
 
     const double x = scenePos.x();
     int bestSlot = -1;
@@ -568,9 +571,9 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
             ChessInstance *occupant = nullptr;
             for (auto &u : units)
             {
-                if (!u.deployed && u.benchSlot == rawSlot && u.getUuid() != uuid)
+                if (!u->deployed && u->benchSlot == rawSlot && u->getUuid() != uuid)
                 {
-                    occupant = &u;
+                    occupant = u.get();
                     break;
                 }
             }
@@ -592,12 +595,6 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
     m_sellLabel->setText(QStringLiteral("出售"));
     recenterSellLabel();
     refreshScene(RefreshUnits); // 刷新单位位置（可能被修改，也可能弹回原位）
-}
-
-/// @brief 打开商店窗口（仅在准备阶段可用）
-void MainWindow::onShopOpenClicked()
-{
-    m_gameManager->openShop(this, &MainWindow::refreshScene); // 商店关闭后的回调：刷新整个场景
 }
 
 // ============================================================================

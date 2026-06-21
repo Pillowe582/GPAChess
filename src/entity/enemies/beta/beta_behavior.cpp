@@ -5,9 +5,9 @@
 #include <QRandomGenerator>
 
 void BetaEnemy::tick(double dt, EnemyInstance &self,
-                     std::vector<ChessInstance> &allies,
+                     std::vector<std::unique_ptr<ChessInstance>> &allies,
                      Renderer &renderer,
-                     int &towerHp, int &pendingGold, int &pendingExp)
+                     int &pendingGold, int &pendingExp)
 {
 
     // ====== 远程逻辑 ======
@@ -26,13 +26,13 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
         bool hit = false;
         for (auto &ally : allies)
         {
-            if (!ally.isAlive || !ally.deployed)
+            if (!ally->isAlive || !ally->deployed)
                 continue;
-            double dx = bullet.x - ally.transform.x;
-            double dy = bullet.y - ally.transform.y;
+            double dx = bullet.x - ally->transform.x;
+            double dy = bullet.y - ally->transform.y;
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
-                ally.dealDamage(bullet.damage,
+                ally->dealDamage(bullet.damage,
                                 DamageType{DamageType::Physical, QColor("#ffffff")});
                 hit = true;
                 break;
@@ -55,15 +55,15 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
     for (auto &a : allies)
     {
         // 跳过塔，优先攻击普通单位
-        if (!a.isAlive || !a.deployed || a.isTower)
+        if (!a->isAlive || !a->deployed || a->isTower)
             continue;
-        double dx = a.transform.x - self.transform.x;
-        double dy = a.transform.y - self.transform.y;
+        double dx = a->transform.x - self.transform.x;
+        double dy = a->transform.y - self.transform.y;
         double d = std::sqrt(dx * dx + dy * dy);
         if (d > bestDist)
         {
             bestDist = d;
-            target = &a;
+            target = a.get();
         }
     }
 
@@ -72,15 +72,15 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
     {
         for (auto &a : allies)
         {
-            if (!a.isAlive || !a.deployed || !a.isTower)
+            if (!a->isAlive || !a->deployed || !a->isTower)
                 continue;
-            double dx = a.transform.x - self.transform.x;
-            double dy = a.transform.y - self.transform.y;
+            double dx = a->transform.x - self.transform.x;
+            double dy = a->transform.y - self.transform.y;
             double d = std::sqrt(dx * dx + dy * dy);
             if (d > bestDist)
             {
                 bestDist = d;
-                target = &a;
+                target = a.get();
             }
         }
     }

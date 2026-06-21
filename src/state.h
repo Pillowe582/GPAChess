@@ -140,8 +140,6 @@ public:
     // ---- 生命 ----
     virtual void setDeath();
 
-    bool stillAlive() const;
-
     // ---- 造成伤害 ----
     double dealDamage(double rawDamage); // 默认为物理伤害
     double dealDamage(double rawDamage, DamageType type);
@@ -197,7 +195,9 @@ public:
 
     int gold = 0, exp = 0;
     int totalCredit = 0, totalGradePoint = 0;
-    std::vector<ChessInstance> ownedChesses;
+
+    // 已拥有的棋子实例
+    std::vector<std::unique_ptr<ChessInstance>> ownedChesses;
 
     int deployedCount() const;
     int benchCount() const;

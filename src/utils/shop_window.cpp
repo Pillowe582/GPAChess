@@ -94,14 +94,14 @@ void ShopWindow::onPurchaseClicked()
 
     assets.gold -= cfg.cost;
     int slot = assets.firstEmptyBenchSlot();
-    ChessInstance inst(cfg, m_gameManager);
+    auto inst = std::make_unique<ChessInstance>(cfg, m_gameManager);
 
     // 连接新购买单位的受伤信号
-    // QObject::connect(&inst, &LivingEntity::receivedDamage, m_gameManager, &GameManager::receivedDamage);
+    // QObject::connect(inst.get(), &LivingEntity::receivedDamage, m_gameManager, &GameManager::receivedDamage);
 
-    inst.deployed = false;
-    inst.benchSlot = slot;
-    inst.behavior.reset(createAllyBehavior(inst.behaviorId));
+    inst->deployed = false;
+    inst->benchSlot = slot;
+    inst->behavior.reset(createAllyBehavior(inst->behaviorId));
     assets.ownedChesses.push_back(std::move(inst));
 
     print(QString("Purchased %1 for %2 gold, slot %3").arg(cfg.name).arg(cfg.cost).arg(slot));

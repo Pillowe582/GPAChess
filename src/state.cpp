@@ -88,11 +88,6 @@ void LivingEntity::setDeath()
     currentHp = 0;
 }
 
-bool LivingEntity::stillAlive() const
-{
-    return isAlive;
-}
-
 double LivingEntity::dealDamage(double rawDamage)
 {
     return dealDamage(rawDamage, {DamageType::Physical, QColor("#FFFFFF")});
@@ -179,7 +174,7 @@ int PlayerAssets::deployedCount() const
 {
     int n = 0;
     for (auto &c : ownedChesses)
-        if (c.deployed && !c.isTower)
+        if (c->deployed && !c->isTower)
             ++n;
     return n;
 }
@@ -188,7 +183,7 @@ int PlayerAssets::benchCount() const
 {
     int n = 0;
     for (auto &c : ownedChesses)
-        if (!c.deployed)
+        if (!c->deployed)
             ++n;
     return n;
 }
@@ -207,16 +202,20 @@ void PlayerAssets::compactBenchSlots()
 {
     int next = 0;
     for (auto &c : ownedChesses)
-        if (!c.deployed)
-            c.benchSlot = next++;
+        if (!c->deployed && !c->isTower)
+            c->benchSlot = next++;
 }
 
 int PlayerAssets::firstEmptyBenchSlot() const
 {
     bool occupied[maxBench] = {};
     for (auto &c : ownedChesses)
-        if (!c.deployed && c.benchSlot >= 0 && c.benchSlot < maxBench)
-            occupied[c.benchSlot] = true;
+    {
+        if (c->isTower)
+            continue;
+        if (!c->deployed && c->benchSlot >= 0 && c->benchSlot < maxBench)
+            occupied[c->benchSlot] = true;
+    }
     for (int i = 0; i < maxBench; ++i)
         if (!occupied[i])
             return i;
@@ -226,15 +225,15 @@ int PlayerAssets::firstEmptyBenchSlot() const
 ChessInstance *PlayerAssets::getUnitByUuid(int uuid)
 {
     for (auto &u : ownedChesses)
-        if (u.uuid == uuid)
-            return &u;
+        if (u->uuid == uuid)
+            return u.get();
     return nullptr;
 }
 
 const ChessInstance *PlayerAssets::getUnitByUuid(int uuid) const
 {
     for (auto &u : ownedChesses)
-        if (u.uuid == uuid)
-            return &u;
+        if (u->uuid == uuid)
+            return u.get();
     return nullptr;
 }

@@ -38,10 +38,6 @@ void TowerBehavior::tick(double dt,
     int dmg = static_cast<int>(30.0 * (1.0 + (1.0 - hpRatio) * 3.0));
 
     it->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#4696FF")});
-    renderer.queueSplash(QString("-%1").arg(dmg),
-                         it->transform.x + jitter(),
-                         it->transform.y - 20 + jitter(),
-                         QColor("#4696FF"));
 
     if (!it->isAlive)
     {
