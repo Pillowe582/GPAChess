@@ -489,7 +489,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
     // 非准备阶段不允许拖拽
     if (m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
     {
-        refreshScene(RefreshUnits); // 弹回
+        refreshScene(RefreshAll); // 弹回并刷新标签
         return;
     }
 
@@ -502,7 +502,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
     {
         m_sellLabel->setText(QStringLiteral("出售"));
         recenterSellLabel();
-        refreshScene(RefreshUnits); // 弹回
+        refreshScene(RefreshAll); // 弹回并刷新标签
         return;
     }
 
@@ -602,7 +602,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
 
     m_sellLabel->setText(QStringLiteral("出售"));
     recenterSellLabel();
-    refreshScene(RefreshUnits); // 刷新单位位置（可能被修改，也可能弹回原位）
+    refreshScene(RefreshAll); // 刷新单位位置和标签（上场数、金币等）
 }
 
 // ============================================================================

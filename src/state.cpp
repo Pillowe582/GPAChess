@@ -124,14 +124,14 @@ double LivingEntity::dealDamage(double rawDamage, BaseEntity &source, DamageType
     currentHp -= actual;
     if (currentHp <= 0)
         setDeath();
-    
+
     if (gameManager && gameManager->getRenderer())
     {
-        gameManager->getRenderer()->queueSplash(QString("-%1").arg(static_cast<int>(actual)),
+        gameManager->getRenderer()->queueSplash(QString("%1").arg(static_cast<int>(actual)),
                                                 transform.x, transform.y - 20,
                                                 type.color);
     }
-    
+
     return actual;
 }
 
@@ -177,7 +177,7 @@ double ChessInstance::dealDamage(double rawDamage, BaseEntity &source, DamageTyp
     {
         type.type = DamageType::Immune;
     }
-    
+
     return LivingEntity::dealDamage(rawDamage, source, type);
 }
 

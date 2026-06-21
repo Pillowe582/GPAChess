@@ -276,7 +276,7 @@
            </widget>
           </item>
           <item>
-           <widget class="QLabel" name="onBattleGroundColeCount">
+           <widget class="QLabel" name="onBattleGroundChessCount">
             <property name="maximumSize">
              <size>
               <width>16777215</width>

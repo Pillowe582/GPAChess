@@ -33,7 +33,7 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
                 ally->dealDamage(bullet.damage, self,
-                                DamageType{DamageType::Physical, QColor("#ffffff")});
+                                 DamageType{DamageType::Physical, QColor("#ffffff")});
                 hit = true;
                 break;
             }
@@ -49,7 +49,7 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
     if (m_cooldown > 0.0)
         return;
 
-    // ====== 找最远我方单位（排除塔）======
+    // ====== 找最远我方单位======
     ChessInstance *target = nullptr;
     double bestDist = -1.0;
     for (auto &a : allies)
