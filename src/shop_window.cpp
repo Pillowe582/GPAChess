@@ -24,7 +24,7 @@ ShopWindow::ShopWindow(DatabaseManager *db, GameManager *gm, QWidget *parent)
     connect(ui->shopChessList, &QListView::clicked, this, &ShopWindow::onShopItemClicked);
     connect(ui->purchaseButton, &QPushButton::clicked, this, &ShopWindow::onPurchaseClicked);
     connect(ui->shopRefreshButton, &QPushButton::clicked, this, &ShopWindow::onRefreshClicked);
-
+    updateGoldLabel();
     refreshShop();
 }
 

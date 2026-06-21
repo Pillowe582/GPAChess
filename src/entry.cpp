@@ -316,6 +316,7 @@ void MainWindow::refreshAllUnits()
         item->setVisible(chess.isAlive && isPreparePhase);
         item->setPos(targetPos);
         item->setDraggable(isPreparePhase);
+        item->update(); // 强制触发重绘，确保图片立即更新
 
         // 视觉由 behavior 决定，entry 只提供坐标和实例引用
         if (chess.behavior && m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
