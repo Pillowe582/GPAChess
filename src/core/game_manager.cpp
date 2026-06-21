@@ -330,6 +330,14 @@ void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(i
     }
     m_shopWindow = new ShopWindow(m_database, this);
 
+    // 回合结束时自动刷新商店
+    connect(this, &GameManager::roundEnded, m_shopWindow, [this]()
+            {
+                if (m_shopWindow)
+                {
+                    m_shopWindow->refreshShop();
+                } });
+
     // 商店关闭回调
     connect(m_shopWindow, &ShopWindow::shopClosed, this, [this, mainWindow, onClose]()
             {

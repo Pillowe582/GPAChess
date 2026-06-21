@@ -132,6 +132,12 @@ void ShopWindow::updateGoldLabel()
     ui->shopRefreshButton->setEnabled(gold >= 2);
 }
 
+void ShopWindow::showEvent(QShowEvent *event)
+{
+    QMainWindow::showEvent(event);
+    updateGoldLabel();
+}
+
 void ShopWindow::closeEvent(QCloseEvent *event)
 {
     print("关闭商店窗口");
