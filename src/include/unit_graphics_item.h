@@ -5,6 +5,8 @@
 #include <QColor>
 #include <QString>
 #include <QPointF>
+#include "game_manager.h"
+#include "render/renderer.h"
 
 /// 战场上/备战席上的一个可拖拽单位图形项
 class UnitGraphicsItem : public QGraphicsObject
@@ -12,7 +14,8 @@ class UnitGraphicsItem : public QGraphicsObject
     Q_OBJECT
 
 public:
-    explicit UnitGraphicsItem(int unitUuid, QGraphicsItem *parent = nullptr);
+    explicit UnitGraphicsItem(int unitUuid, QGraphicsItem *parent = nullptr,
+                              GameManager *gameManager = nullptr, Renderer *renderer = nullptr);
 
     /// 更新视觉外观（HP、名字、颜色、大小、星级）
     void updateVisual(const QString &name, int currentHp, int maxHp,
@@ -42,15 +45,11 @@ private:
     int m_uuid;
     bool m_draggable = true;
     QPointF m_dragOrigin;
+    GameManager *m_gameManager = nullptr;
+    Renderer *m_renderer = nullptr;
 
-    // 视觉参数
-    QColor m_fillColor = Qt::gray;
-    QString m_name;
-    int m_currentHp = 0;
-    int m_maxHp = 0;
+    // 仅存储半径（boundingRect 需要），其余视觉由 behavior 负责
     double m_radius = 30.0;
-    int m_starLevel = 1;
-    bool m_deployed = false;
 };
 
 #endif // UNITGRAPHICSITEM_H

@@ -21,8 +21,10 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
         b.x += b.vx * dt;
         b.y += b.vy * dt;
 
-        renderer.queueCircle(b.x, b.y, 6.0,
-                             QColor(255, 100, 100, 220), 100);
+        // 使用子弹图片代替圆形
+        renderer.queueImage(":/texture/projectile/bullet.png", 
+                           b.x, b.y, 
+                           0.0, 1.0, Qt::AlignCenter, 100);
 
         bool hit = false;
         for (auto &ally : allies)

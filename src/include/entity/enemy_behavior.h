@@ -21,7 +21,8 @@ public:
                       int &pendingExp) = 0;
 
     // ========== 渲染 tick（与逻辑分离）==========
-    virtual void renderSelf(const EnemyInstance &self, Renderer &r);
+    virtual void renderSelf(const EnemyInstance &self, Renderer &r,
+                            double x, double y);
 };
 
 EnemyBehavior *createEnemyBehavior(int behaviorId);

@@ -271,14 +271,13 @@ void GameManager::executeAttackCycle(double deltaSeconds)
 
     for (auto &enemy : m_enemies)
         if (enemy.isAlive && enemy.behavior)
-            enemy.behavior->renderSelf(enemy, *m_renderer);
+            enemy.behavior->renderSelf(enemy, *m_renderer, enemy.posX, enemy.posY);
 
     if (m_towerBehavior && m_towerHp > 0)
         m_towerBehavior->renderSelf(m_towerHp, m_towerMaxHp, *m_renderer);
 
     // Ally 渲染由 refreshAllUnits 在 tick 信号中处理
-
-    m_renderer->flush();
+    // 注意：不在这里 flush，等待 refreshAllUnits 统一 flush
 }
 
 // % 检查战斗结束

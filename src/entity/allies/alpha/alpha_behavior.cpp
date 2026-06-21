@@ -32,7 +32,7 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
                     continue;
                 double dx = enemy.posX - self.posX;
                 double dy = enemy.posY - self.posY;
-                if (std::sqrt(dx * dx + dy * dy) < 120.0)
+                if (dx * dx + dy * dy < 14400.0)
                 {
                     int dmg = self.atk.getFinal();
                     enemy.takeDamage(dmg);
@@ -58,10 +58,11 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
             m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
         }
 
-        // 渲染：旋转矩形（110×16，居中于自身位置）
-        renderer.queueRect(self.posX, self.posY, 110.0, 16.0,
-                           QColor(255, 140, 50, 200), 90,
-                           m_weapon.angle * 180.0 / 3.14159265, true);
+        // 渲染：旋转的钻石剑图片
+        double rotationDeg = m_weapon.angle * 180.0 / 3.14159265;
+        renderer.queueImage(":/texture/projectile/diamond_sword.png",
+                            self.posX, self.posY,
+                            rotationDeg, 1.0, Qt::AlignCenter, 90);
         return;
     }
 

@@ -4,9 +4,10 @@
 #include <QGraphicsSceneMouseEvent>
 #include <QFont>
 #include <QtMath>
+#include "game_manager.h"
 
-UnitGraphicsItem::UnitGraphicsItem(int unitUuid, QGraphicsItem *parent)
-    : QGraphicsObject(parent), m_uuid(unitUuid)
+UnitGraphicsItem::UnitGraphicsItem(int unitUuid, QGraphicsItem *parent, GameManager *gameManager, Renderer *renderer)
+    : QGraphicsObject(parent), m_uuid(unitUuid), m_gameManager(gameManager), m_renderer(renderer)
 {
     setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable |
              QGraphicsItem::ItemSendsGeometryChanges);
@@ -16,22 +17,16 @@ UnitGraphicsItem::UnitGraphicsItem(int unitUuid, QGraphicsItem *parent)
 
 // --------------- visual ---------------
 
-void UnitGraphicsItem::updateVisual(const QString &name, int currentHp, int maxHp,
-                                    const QColor &fillColor, double radius, int starLevel, bool deployed)
+void UnitGraphicsItem::updateVisual(const QString &, int, int,
+                                    const QColor &, double radius, int, bool)
 {
-    if (m_name != name || m_fillColor != fillColor || m_radius != radius ||
-        m_currentHp != currentHp || m_maxHp != maxHp || m_starLevel != starLevel || m_deployed != deployed)
+    // 仅存储半径（boundingRect / hit test 需要），视觉由 behavior 画
+    if (m_radius != radius)
     {
         prepareGeometryChange();
-        m_name = name;
-        m_fillColor = fillColor;
         m_radius = radius;
-        m_currentHp = currentHp;
-        m_maxHp = maxHp;
-        m_starLevel = starLevel;
-        m_deployed = deployed;
-        update();
     }
+    update();
 }
 
 void UnitGraphicsItem::setDraggable(bool enabled)
@@ -57,62 +52,13 @@ QRectF UnitGraphicsItem::boundingRect() const
 void UnitGraphicsItem::paint(QPainter *painter, const QStyleOptionGraphicsItem * /*option*/,
                              QWidget * /*widget*/)
 {
-    painter->setRenderHint(QPainter::Antialiasing);
+    if (m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
+        return; // 准备阶段由 behavior 画，其他阶段不画（由 entry 直接用 renderer 画）
+    const auto *unit = m_gameManager->getPlayerAssets().getUnitByUuid(m_uuid);
+    if (!unit || !unit->behavior)
+        return;
 
-    // -- 身体圆 --
-    QRectF bodyRect(-m_radius, -m_radius, m_radius * 2.0, m_radius * 2.0);
-    painter->setPen(QPen(Qt::black, 2.0));
-    painter->setBrush(QBrush(m_fillColor));
-    painter->drawEllipse(bodyRect);
-
-    // -- 血条（更薄更靠上） --
-    const double barWidth = m_radius * 3.2;
-    const double barHeight = 8.0;
-    const double barX = -barWidth / 2.0;
-    const double barY = -m_radius - 30.0;
-
-    painter->setPen(Qt::NoPen);
-    painter->setBrush(QColor(40, 40, 40, 220));
-    painter->drawRect(QRectF(barX, barY, barWidth, barHeight));
-
-    const double hpRatio = m_maxHp > 0
-                               ? qBound(0.0, static_cast<double>(m_currentHp) / static_cast<double>(m_maxHp), 1.0)
-                               : 0.0;
-    painter->setBrush(QColor(70, 220, 90));
-    painter->drawRect(QRectF(barX, barY, barWidth * hpRatio, barHeight));
-
-    const QString label = QString("%1\n%2/%3").arg(m_name).arg(m_currentHp).arg(m_maxHp);
-    QRectF textRect(barX, barY + barHeight + 4.0, barWidth, 48.0);
-
-    // 阴影辅助：用黑色/深色偏移绘制3层再画前景
-    auto drawShadowText = [&](const QRectF &r, int flags, const QColor &fg)
-    {
-        painter->setPen(QColor(0, 0, 0, 180));
-        painter->drawText(r.translated(1, 1), flags, label);
-        painter->drawText(r.translated(2, 1), flags, label);
-        painter->setPen(fg);
-        painter->drawText(r, flags, label);
-    };
-
-    QFont font("Microsoft YaHei", 9);
-    font.setBold(true);
-    painter->setFont(font);
-    drawShadowText(textRect, Qt::AlignHCenter | Qt::AlignTop, QColor(255, 255, 255));
-
-    // -- 星级（身体下方，金色，带阴影） --
-    if (m_starLevel > 0)
-    {
-        const QString starStr = QString("%1★").arg(m_starLevel);
-        QFont starFont("Microsoft YaHei", 9);
-        starFont.setBold(true);
-        painter->setFont(starFont);
-        QRectF starRect(barX, m_radius + 6.0, barWidth, 20.0);
-        painter->setPen(QColor(0, 0, 0, 180));
-        painter->drawText(starRect.translated(1, 1), Qt::AlignHCenter | Qt::AlignTop, starStr);
-        painter->drawText(starRect.translated(2, 1), Qt::AlignHCenter | Qt::AlignTop, starStr);
-        painter->setPen(QColor(255, 215, 0));
-        painter->drawText(starRect, Qt::AlignHCenter | Qt::AlignTop, starStr);
-    }
+    unit->behavior->renderSelf(*unit, *painter, 0.5);
 }
 
 // --------------- mouse ---------------

@@ -7,6 +7,7 @@
 class ChessInstance;
 class EnemyInstance;
 class Renderer;
+class QPainter;
 
 class AllyBehavior : public BaseBehavior
 {
@@ -18,10 +19,13 @@ public:
                       int &pendingGold,
                       int &pendingExp) = 0;
 
-    /// 渲染自身 —— 由 refreshAllUnits 每帧调用
-    /// entry 负责计算坐标 (x,y), behavior 读取 self 的状态决定画什么
+    /// Queue 渲染 —— refreshAllUnits 调用，通过 Renderer 队列绘制
     virtual void renderSelf(const ChessInstance &self, Renderer &r,
                             double x, double y);
+
+    /// Paint 渲染 —— Qt paint 事件驱动，用 QPainter 直接绘制
+    virtual void renderSelf(const ChessInstance &self, QPainter &p,
+                            double radius);
 };
 
 AllyBehavior *createAllyBehavior(int behaviorId);

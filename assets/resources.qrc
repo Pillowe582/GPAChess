@@ -1,5 +1,17 @@
 <!DOCTYPE RCC>
 <RCC version="1.0">
     <qresource prefix="/">
+        <!-- Entity textures -->
+        <file>texture/entity/allyA.png</file>
+        <file>texture/entity/allyB.png</file>
+        <file>texture/entity/enemyA.png</file>
+        <file>texture/entity/enemyB.png</file>
+        
+        <!-- Projectile textures -->
+        <file>texture/projectile/bullet.png</file>
+        <file>texture/projectile/diamond_sword.png</file>
+        
+        <!-- Battleground textures -->
+        <file>texture/battleground/sand.png</file>
     </qresource>
 </RCC>

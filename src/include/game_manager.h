@@ -135,6 +135,8 @@ private:
 private:
     QTimer *m_tickTimer;
     int m_roundNumber;
+
+    // 当前回合阶段
     RoundPhase m_phase;
 
     PlayerAssets m_player;

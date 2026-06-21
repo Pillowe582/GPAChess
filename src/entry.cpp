@@ -286,7 +286,8 @@ void MainWindow::refreshAllUnits()
         if (!item)
         {
             // 如果uuid对应不到图形项，则创建新的图形项并加入场景
-            item = new UnitGraphicsItem(chess.uuid);
+            item = new UnitGraphicsItem(chess.uuid, nullptr,
+                                        m_gameManager, m_renderer);
             m_battleScene->addItem(item);
             m_unitItems[chess.uuid] = item;
             connect(item, &UnitGraphicsItem::dragStarted,
@@ -312,12 +313,12 @@ void MainWindow::refreshAllUnits()
             targetPos = QPointF(cx, cy);
         }
 
-        item->setVisible(chess.isAlive);
+        item->setVisible(chess.isAlive && isPreparePhase);
         item->setPos(targetPos);
         item->setDraggable(isPreparePhase);
 
         // 视觉由 behavior 决定，entry 只提供坐标和实例引用
-        if (chess.behavior)
+        if (chess.behavior && m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
             chess.behavior->renderSelf(chess, *m_renderer, targetPos.x(), targetPos.y());
     }
 
@@ -354,7 +355,7 @@ void MainWindow::refreshSceneLabels()
     if (auto *lbl = findChild<QLabel *>("totalCredit"))
         lbl->setText(QString("已修学分：%1").arg(m_gameManager->getPreviousCredits()));
     if (auto *lbl = findChild<QLabel *>("gpa"))
-        lbl->setText(QString("GPA：%1/4.0").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
+        lbl->setText(QString("GPA：%1").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
     if (auto *lbl = findChild<QLabel *>("roundValue"))
         lbl->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
     if (auto *lbl = findChild<QLabel *>("goldCount"))

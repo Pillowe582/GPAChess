@@ -13,8 +13,29 @@
 #include <cmath>
 
 Renderer::Renderer(QGraphicsScene *scene, QObject *parent)
-    : QObject(parent), m_scene(scene)
+    : QObject(parent), m_scene(scene),
+      color(Qt::white)
 {
+}
+
+// ========== 图片缓存 ==========
+
+QPixmap Renderer::loadImage(const QString &path)
+{
+    // 检查缓存
+    if (m_imageCache.contains(path))
+        return m_imageCache[path];
+
+    // 从 Qt 资源系统加载
+    QPixmap pix(path);
+    if (!pix.isNull())
+    {
+        m_imageCache[path] = pix;
+        return pix;
+    }
+
+    // 如果加载失败，返回空 pixmap
+    return QPixmap();
 }
 
 // ========== 帧生命周期 ==========
@@ -72,27 +93,47 @@ void Renderer::flush()
         }
         case QueueKind::Image:
         {
-            double s = q.param1;
-            double w = 32.0 * s, h = 32.0 * s;
+            // 加载图片
+            QPixmap pix = loadImage(q.text);
+            if (pix.isNull())
+                break; // 加载失败，跳过
+
+            double scale = q.param1; // scale
+            double w = 128 * scale;
+            double h = 128 * scale;
+
             double px = q.x, py = q.y;
             if (q.alignment & Qt::AlignHCenter)
                 px -= w / 2.0;
             if (q.alignment & Qt::AlignVCenter)
                 py -= h / 2.0;
-            auto *img = m_scene->addRect(
-                QRectF(px, py, w, h),
-                QPen(Qt::NoPen), QBrush(q.color));
+
+            // 创建 pixmap item
+            auto scaledPix = pix.scaled(w, h, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            auto *img = m_scene->addPixmap(scaledPix);
+            img->setPos(px, py);
+
+            // 支持旋转
+            if (q.rotation != 0.0)
+            {
+                img->setTransformOriginPoint(w / 2.0, h / 2.0);
+                img->setRotation(q.rotation);
+            }
+
             img->setData(0, -1);
             img->setZValue(q.zValue);
             break;
         }
         case QueueKind::Text:
         {
-            auto *t = m_scene->addSimpleText(q.text);
-            t->setBrush(q.color);
-            t->setPos(q.x, q.y);
-            t->setData(0, -1);
-            t->setZValue(q.zValue);
+            QFont ftFont("Microsoft YaHei", 9);
+            ftFont.setBold(true);
+            auto *simpleText = m_scene->addSimpleText(q.text);
+            simpleText->setFont(ftFont);
+            simpleText->setBrush(q.color);
+            simpleText->setPos(q.x, q.y);
+            simpleText->setData(0, -1);
+            simpleText->setZValue(q.zValue);
             break;
         }
         case QueueKind::Splash:
