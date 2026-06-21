@@ -92,7 +92,7 @@ void GameManager::initialize()
         inst->behavior.reset(createAllyBehavior(inst->behaviorId));
         m_player.ownedChesses.push_back(std::move(inst));
     }
-
+    print("游戏管理器初始化完成");
     emit phaseChanged(m_phase);
 }
 

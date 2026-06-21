@@ -72,48 +72,56 @@ void MainWindow::initGame()
 {
     print("启动！！");
     switchScene(Scene::MainGame);
-
-    if (!m_gameManager)
+    if (m_gameManager)
     {
-        // 创建游戏主控
-        m_gameManager = new GameManager(this);
-        m_gameManager->initialize();
+        delete m_gameManager;
+    }
+    if (m_renderer)
+    {
+        delete m_renderer;
+    }
+    // 刷新UI状态
+    ui->startRoundButton->setEnabled(1);
+    ui->openShopButton->setEnabled(1);
 
-        // 创建渲染器并注入
-        m_renderer = new Renderer(m_battleScene, this);
-        m_gameManager->setRenderer(m_renderer);
+    // 创建游戏主控
+    m_gameManager = new GameManager(this);
+    m_gameManager->initialize();
 
-        // 回合阶段改变 → UI 刷新
-        connect(m_gameManager, &GameManager::phaseChanged, this, [this](RoundPhase p)
-                {
+    // 创建渲染器并注入
+    m_renderer = new Renderer(m_battleScene, this);
+    m_gameManager->setRenderer(m_renderer);
+
+    // 回合阶段改变 → UI 刷新
+    connect(m_gameManager, &GameManager::phaseChanged, this, [this](RoundPhase p)
+            {
             print(QString("回合阶段改变至: %1").arg(static_cast<int>(p)));
             ui->startRoundButton->setEnabled(p == RoundPhase::Prepare);
             ui->openShopButton->setEnabled(p == RoundPhase::Prepare);
             refreshScene(RefreshAll); });
 
-        // tick 信号 → 刷新单位
-        connect(m_gameManager, &GameManager::tick, this, [this]()
-                { refreshScene(RefreshUnits); });
+    // tick 信号 → 刷新单位
+    connect(m_gameManager, &GameManager::tick, this, [this]()
+            { refreshScene(RefreshUnits); });
 
-        // 回合结束 → 显示结果
-        connect(m_gameManager, &GameManager::roundEnded,
-                this, &MainWindow::showRoundResult);
+    // 回合结束 → 显示结果
+    connect(m_gameManager, &GameManager::roundEnded,
+            this, &MainWindow::showRoundResult);
 
-        // 本局游戏结束 → 显示最终成绩
-        connect(m_gameManager, &GameManager::gameOver,
-                this, &MainWindow::showGameOver);
+    // 本局游戏结束 → 显示最终成绩
+    connect(m_gameManager, &GameManager::gameOver,
+            this, &MainWindow::showGameOver);
 
-        // 点击回合开始按钮 → 通知 GameManager 开始回合
-        connect(ui->startRoundButton, &QPushButton::clicked, this, [this]()
-                {
+    // 点击回合开始按钮 → 通知 GameManager 开始回合
+    connect(ui->startRoundButton, &QPushButton::clicked, this, [this]()
+            {
             if (!m_gameManager) return;
             m_gameManager->startRound(m_gameManager->getRoundNumber());
             refreshScene(RefreshAll); });
 
-        // 点击商店按钮 → 打开商店窗口
-        connect(ui->openShopButton, &QPushButton::clicked,
-                this, &MainWindow::onShopOpenClicked);
-    }
+    // 点击商店按钮 → 打开商店窗口
+    connect(ui->openShopButton, &QPushButton::clicked,
+            this, &MainWindow::onShopOpenClicked);
 
     refreshScene(RefreshAll);
 }
