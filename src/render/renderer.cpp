@@ -108,8 +108,8 @@ void Renderer::flush()
             if (q.alignment & Qt::AlignVCenter)
                 py -= h / 2.0;
 
-            // 创建 pixmap item
-            auto scaledPix = pix.scaled(w, h, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            // 创建 pixmap item（使用 FastTransformation 保持像素边缘清晰）
+            auto scaledPix = pix.scaled(w, h, Qt::KeepAspectRatio, Qt::FastTransformation);
             auto *img = m_scene->addPixmap(scaledPix);
             img->setPos(px, py);
 

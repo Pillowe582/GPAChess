@@ -59,7 +59,7 @@ void AllyBehavior::renderSelf(const ChessInstance &self, QPainter &p,
         scale *= self.deployed ? 1.0 : 0.7;
         // 计算缩放比例（适应 scale）
         QPixmap scaledPix = pix.scaled(128 * scale, 128 * scale,
-                                       Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                                       Qt::KeepAspectRatio, Qt::FastTransformation);
 
         // 居中绘制
         double offsetX = -scaledPix.width() / 2.0;
