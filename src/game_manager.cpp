@@ -246,7 +246,7 @@ void GameManager::spawnEnemies(int roundNumber, int count, bool mandatory)
     m_enemies.clear();
 
     // 根据回合数决定敌方数量
-    auto picked = pickRandomEnemies(roundNumber, count, mandatory);
+    auto picked = pickRandomEnemies(roundNumber, count);
 
     for (size_t i = 0; i < picked.size(); ++i)
     {
@@ -259,7 +259,7 @@ void GameManager::spawnEnemies(int roundNumber, int count, bool mandatory)
     }
 }
 
-std::vector<EnemyConfig> GameManager::pickRandomEnemies(int roundNumber, int count, bool mandatory)
+std::vector<EnemyConfig> GameManager::pickRandomEnemies(int roundNumber, int count)
 {
     std::vector<EnemyConfig> result;
     if (!m_database)
@@ -337,10 +337,10 @@ void GameManager::tickBehaviors(double deltaSeconds)
 /// @return 是否结束战斗
 bool GameManager::checkCombatEndConditions(bool &outVictory)
 {
-    // 检查我方是否还有单位存活
+    // 检查我方是否还有非塔单位存活
     bool anyAllyAlive = std::any_of(m_player.ownedChesses.begin(), m_player.ownedChesses.end(),
                                     [](const std::unique_ptr<ChessInstance> &ally)
-                                    { return ally->isAlive; });
+                                    { return ally->isAlive && !ally->isTower && ally->deployed; });
     bool anyEnemyAlive = std::any_of(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
                                      { return e.isAlive; });
 
@@ -372,7 +372,7 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     // 敌方全灭时的处理
     if (!anyEnemyAlive)
     {
-        // 如果必修敌人已清除，但还有 elective 波次未生成
+        // 如果必修敌人已清除，但还有 elective 未生成
         if (m_mandatoryEnemiesCleared && m_electiveEnemiesNotSpawned > 0)
         {
 
@@ -380,19 +380,16 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
             {
                 // 生成选修敌人
                 --m_electiveEnemiesNotSpawned;
-                print(QString("生成一只选修敌人"));
-                int electiveCount = 1;
-                auto picked = pickRandomEnemies(m_roundNumber, electiveCount, false);
-
-                for (size_t i = 0; i < picked.size(); ++i)
+                print(QString("生成几只选修敌人"));
+                int maxElectiveCount = 2;
+                int electiveCount = std::min(m_electiveEnemiesNotSpawned, maxElectiveCount);
+                auto picked = pickRandomEnemies(m_roundNumber, electiveCount);
+                for (auto each : picked)
                 {
-                    m_enemies.emplace_back(picked[i], false, m_roundNumber, this);
-                    EnemyInstance &e = m_enemies.back();
-                    e.isRequired = false; // 选修
-                    e.behavior.reset(createEnemyBehavior(picked[i].behaviorId));
-                    e.transform.x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
-                    e.transform.y = 160.0 + (static_cast<double>(i / 3) * 180.0);
+                    each.hpGrowthMultiplier += 1;
+                    each.atkGrowthMultiplier += 1;
                 }
+                spawnEnemies(m_roundNumber, electiveCount, false);
 
                 // 不结束战斗，继续战斗
                 outVictory = false;

@@ -88,24 +88,50 @@ void LivingEntity::setDeath()
     currentHp = 0;
 }
 
-double LivingEntity::dealDamage(double rawDamage)
+double LivingEntity::dealDamage(double rawDamage, BaseEntity &source)
 {
-    return dealDamage(rawDamage, {DamageType::Physical, QColor("#FFFFFF")});
+    return dealDamage(rawDamage, source, {DamageType::Physical, QColor("#FFFFFF")});
 }
 
-double LivingEntity::dealDamage(double rawDamage, DamageType type)
+double LivingEntity::dealDamage(double rawDamage, BaseEntity &source, DamageType type)
 {
     if (!isAlive)
         return 0.0;
     double actual = rawDamage;
-    if (type.type == DamageType::Physical)
+    switch (type.type)
+    {
+    case DamageType::Physical:
+    {
         actual *= 100.0 / (100.0 + currentDef);
+        break;
+    }
+    case DamageType::Immune:
+    {
+        if (gameManager && gameManager->getRenderer())
+        {
+            gameManager->getRenderer()->queueSplash(QString("免疫"),
+                                                    transform.x, transform.y - 20,
+                                                    "#b3b3b3");
+        }
+        return 0.0;
+    }
+    case DamageType::True:
+        break;
+    default:
+        break;
+    }
+
     currentHp -= actual;
     if (currentHp <= 0)
         setDeath();
-    gameManager->getRenderer()->queueSplash(QString("-%1").arg(static_cast<int>(actual)),
-                                            transform.x, transform.y - 20,
-                                            type.color);
+    
+    if (gameManager && gameManager->getRenderer())
+    {
+        gameManager->getRenderer()->queueSplash(QString("-%1").arg(static_cast<int>(actual)),
+                                                transform.x, transform.y - 20,
+                                                type.color);
+    }
+    
     return actual;
 }
 
@@ -142,6 +168,17 @@ void ChessInstance::resetStatus()
     currentSpeed = maxSpeed.getFinal();
     isAlive = true;
     targetEnemyId = -1;
+}
+
+double ChessInstance::dealDamage(double rawDamage, BaseEntity &source, DamageType type)
+{
+    // 如果是塔且必修敌人已清除，标记为免疫伤害
+    if (isTower && gameManager && gameManager->isMandatoryEnemiesCleared())
+    {
+        type.type = DamageType::Immune;
+    }
+    
+    return LivingEntity::dealDamage(rawDamage, source, type);
 }
 
 // ============================================================================

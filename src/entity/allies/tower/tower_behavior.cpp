@@ -27,7 +27,7 @@ void TowerBehavior::tick(double dt,
     // 找第一个存活敌人
     auto it = std::find_if(enemies.begin(), enemies.end(),
                            [](const EnemyInstance &e)
-                           { return e.isAlive; });
+                           { return e.isAlive && e.isRequired; });
     if (it == enemies.end())
         return;
 
@@ -38,7 +38,7 @@ void TowerBehavior::tick(double dt,
 
     int dmg = static_cast<int>(it->maxHp.getFinal() * (0.01 + (1.0 - hpRatio) * 2.0));
 
-    it->dealDamage(dmg, DamageType{DamageType::True, QColor("#46a6ff")});
+    it->dealDamage(dmg, self, DamageType{DamageType::True, QColor("#46a6ff")});
 
     if (!it->isAlive)
     {

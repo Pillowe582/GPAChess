@@ -69,6 +69,9 @@ public:
         openShop(nullptr, nullptr);
     }
 
+    // 检查必修敌人是否已清除
+    bool isMandatoryEnemiesCleared() const { return m_mandatoryEnemiesCleared; }
+
     // 计算单位总价值（用于出售时返还金币）
     int getTotalWorth(int star, int cost)
     {
@@ -125,7 +128,7 @@ private slots:
 private:
     void transitionPhase(RoundPhase newPhase);
     void spawnEnemies(int roundNumber, int count, bool mandatory = true);
-    std::vector<EnemyConfig> pickRandomEnemies(int roundNumber, int count, bool mandatory = true);
+    std::vector<EnemyConfig> pickRandomEnemies(int roundNumber, int count);
     void tickBehaviors(double deltaSeconds);
     bool checkCombatEndConditions(bool &outVictory);
     void resetUnitsForNextRound();

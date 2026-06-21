@@ -34,7 +34,7 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
                 if (std::sqrt(dx * dx + dy * dy) < 200.0)
                 {
                     int dmg = self.atk.getFinal();
-                    ally->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#00ffc3")});
+                    ally->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00ffc3")});
                 }
             }
         }

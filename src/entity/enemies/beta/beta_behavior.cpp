@@ -32,7 +32,7 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
             double dy = bullet.y - ally->transform.y;
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
-                ally->dealDamage(bullet.damage,
+                ally->dealDamage(bullet.damage, self,
                                 DamageType{DamageType::Physical, QColor("#ffffff")});
                 hit = true;
                 break;

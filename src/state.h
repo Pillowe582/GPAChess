@@ -42,7 +42,8 @@ struct DamageType
     enum Type
     {
         Physical,
-        True
+        True,
+        Immune
     };
     Type type = Physical;
     QColor color;
@@ -147,8 +148,8 @@ public:
     virtual void setDeath();
 
     // ---- 造成伤害 ----
-    double dealDamage(double rawDamage); // 默认为物理伤害
-    double dealDamage(double rawDamage, DamageType type);
+    virtual double dealDamage(double rawDamage, BaseEntity &source); // 默认为物理伤害
+    virtual double dealDamage(double rawDamage, BaseEntity &source, DamageType type);
 };
 
 // ============================================================================
@@ -174,6 +175,8 @@ public:
 
     void calculateBaseStatsByStar();
     void resetStatus();
+
+    virtual double dealDamage(double rawDamage, BaseEntity &source, DamageType type) override;
 };
 
 class EnemyInstance : public EnemyConfig, public LivingEntity

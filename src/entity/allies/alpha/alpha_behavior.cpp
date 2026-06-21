@@ -35,7 +35,7 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
                 if (dx * dx + dy * dy < 14400.0)
                 {
                     int dmg = self.atk.getFinal();
-                    enemy.dealDamage(dmg, DamageType{DamageType::Physical, QColor("#FF8C32")});
+                    enemy.dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#FF8C32")});
                     if (!enemy.isAlive)
                     {
                         if (rng->bounded(10) == 0)
