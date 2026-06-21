@@ -3,8 +3,8 @@
 #include "print.h"
 #include "entity/ally_behavior.h"
 #include "entity/enemy_behavior.h"
-#include "tower/tower_behavior.h"
-#include "render/renderer.h"
+#include "allies/tower/tower_behavior.h"
+#include "renderer.h"
 
 #include <algorithm>
 #include <cmath>
@@ -48,12 +48,16 @@ void GameManager::initialize()
 
     // 开局免费给n个随机角色放在备战席
 
-    const auto &pool = m_database->allChessConfigs();
+    const auto &pool = m_database->allAllyConfigs();
     const int starterCount = 2;
     for (int i = 0; i < starterCount && !pool.empty(); ++i)
     {
         int idx = m_rng.bounded(static_cast<int>(pool.size()));
-        ChessInstance inst(pool[idx]);
+        ChessInstance inst(pool[idx], this);
+
+        // 连接盟友受伤信号到 GameManager
+        // connect(&inst, &LivingEntity::receivedDamage, this, &GameManager::receivedDamage);
+
         inst.deployed = false;
         inst.benchSlot = i;
         inst.behavior.reset(createAllyBehavior(inst.behaviorId));
@@ -93,8 +97,8 @@ void GameManager::startRound(int roundNumber)
     {
         if (u.deployed)
         {
-            u.savedPosX = u.posX;
-            u.savedPosY = u.posY;
+            u.savedPosX = u.transform.x;
+            u.savedPosY = u.transform.y;
         }
     }
 
@@ -161,8 +165,8 @@ void GameManager::resetUnitsForNextRound()
         // 回合结束后，已部署单位回到回合开始时的位置
         if (unit.deployed)
         {
-            unit.posX = unit.savedPosX;
-            unit.posY = unit.savedPosY;
+            unit.transform.x = unit.savedPosX;
+            unit.transform.y = unit.savedPosY;
         }
     }
     m_enemies.clear();
@@ -192,11 +196,12 @@ void GameManager::spawnEnemies(int roundNumber)
     int uidBase = 1000 + roundNumber * 100;
     for (size_t i = 0; i < picked.size(); ++i)
     {
-        m_enemies.emplace_back(uidBase + static_cast<int>(i), picked[i], false, roundNumber);
+        m_enemies.emplace_back(picked[i], false, roundNumber, this);
         EnemyInstance &e = m_enemies.back();
+
         e.behavior.reset(createEnemyBehavior(picked[i].behaviorId));
-        e.posX = 1180.0 + (static_cast<double>(i % 3) * 140.0);
-        e.posY = 160.0 + (static_cast<double>(i / 3) * 180.0);
+        e.transform.x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
+        e.transform.y = 160.0 + (static_cast<double>(i / 3) * 180.0);
     }
 }
 
@@ -271,7 +276,7 @@ void GameManager::executeAttackCycle(double deltaSeconds)
 
     for (auto &enemy : m_enemies)
         if (enemy.isAlive && enemy.behavior)
-            enemy.behavior->renderSelf(enemy, *m_renderer, enemy.posX, enemy.posY);
+            enemy.behavior->renderSelf(enemy, *m_renderer, enemy.transform.x, enemy.transform.y);
 
     if (m_towerBehavior && m_towerHp > 0)
         m_towerBehavior->renderSelf(m_towerHp, m_towerMaxHp, *m_renderer);
@@ -419,7 +424,7 @@ void GameManager::checkAndMergeStars()
                           .arg(cfgId)
                           .arg(star + 1)
                           .arg(cfgId)
-                          .arg(units[target].uuid));
+                          .arg(units[target].getUuid()));
                 merged = true;
                 break;
             }
@@ -436,7 +441,7 @@ int GameManager::sellUnit(int uuid)
     auto &units = m_player.ownedChesses;
     for (size_t i = 0; i < units.size(); ++i)
     {
-        if (units[i].uuid == uuid)
+        if (units[i].getUuid() == uuid)
         {
             int star = units[i].starLevel;
             int cost = units[i].cost;

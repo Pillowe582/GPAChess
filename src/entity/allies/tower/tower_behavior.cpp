@@ -1,6 +1,6 @@
-#include "tower/tower_behavior.h"
+#include "allies/tower/tower_behavior.h"
 #include "state.h"
-#include "render/renderer.h"
+#include "renderer.h"
 
 #include <algorithm>
 #include <QRandomGenerator>
@@ -46,8 +46,8 @@ public:
 
         it->takeDamage(dmg);
         renderer.queueSplash(QString("-%1").arg(dmg),
-                             it->posX + jitter(),
-                             it->posY - 20 + jitter(),
+                             it->transform.x + jitter(),
+                             it->transform.y - 20 + jitter(),
                              QColor("#4696FF"));
 
         if (!it->isAlive)

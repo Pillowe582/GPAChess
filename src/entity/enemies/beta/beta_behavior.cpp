@@ -1,6 +1,6 @@
 #include "beta_behavior.h"
 #include "state.h"
-#include "render/renderer.h"
+#include "renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
@@ -9,42 +9,36 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
                      Renderer &renderer,
                      int &towerHp, int &pendingGold, int &pendingExp)
 {
-    auto rng = QRandomGenerator::global();
-    auto jitter = [rng]() -> double
-    { return (rng->generateDouble() - 0.5) * 30.0; };
 
     // ====== 远程逻辑 ======
     // ====== 推进已有子弹 ======
     for (size_t i = 0; i < m_bullets.size();)
     {
-        auto &b = m_bullets[i];
-        b.x += b.vx * dt;
-        b.y += b.vy * dt;
+        auto &bullet = m_bullets[i];
+        bullet.x += bullet.vx * dt;
+        bullet.y += bullet.vy * dt;
 
         // 使用子弹图片代替圆形
-        renderer.queueImage(":/texture/projectile/bullet.png", 
-                           b.x, b.y, 
-                           0.0, 1.0, Qt::AlignCenter, 100);
+        renderer.queueImage(":/texture/projectile/bullet.png",
+                            bullet.x, bullet.y,
+                            0.0, 1.0, Qt::AlignCenter, 100);
 
         bool hit = false;
         for (auto &ally : allies)
         {
             if (!ally.isAlive || !ally.deployed)
                 continue;
-            double dx = b.x - ally.posX;
-            double dy = b.y - ally.posY;
+            double dx = bullet.x - ally.transform.x;
+            double dy = bullet.y - ally.transform.y;
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
-                ally.takeDamage(b.damage);
-                renderer.queueSplash(QString("-%1").arg(b.damage),
-                                     ally.posX + jitter(),
-                                     ally.posY - 20 + jitter(),
-                                     QColor("#FFFFFF"));
+                ally.dealDamage(bullet.damage,
+                                DamageType{DamageType::Physical, QColor("#ffffff")});
                 hit = true;
                 break;
             }
         }
-        if (hit || b.x < -100 || b.x > 2020 || b.y < -100 || b.y > 900)
+        if (hit || bullet.x < -100 || bullet.x > 2020 || bullet.y < -100 || bullet.y > 900)
             m_bullets.erase(m_bullets.begin() + static_cast<long long>(i));
         else
             ++i;
@@ -62,8 +56,8 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
     {
         if (!a.isAlive || !a.deployed)
             continue;
-        double dx = a.posX - self.posX;
-        double dy = a.posY - self.posY;
+        double dx = a.transform.x - self.transform.x;
+        double dy = a.transform.y - self.transform.y;
         double d = std::sqrt(dx * dx + dy * dy);
         if (d > bestDist)
         {
@@ -72,25 +66,27 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
         }
     }
 
-    int atkSpd = self.attackSpeed.getFinal();
+    int atkSpd = self.baseAttackSpeed;
     double interval = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;
 
     if (!target)
     {
-        // 没有我方单位 → 攻击塔
+        auto rng2 = QRandomGenerator::global();
+        auto j2 = [rng2]() -> double
+        { return (rng2->generateDouble() - 0.5) * 30.0; };
         int dmg = self.atk.getFinal();
         towerHp -= dmg;
-        renderer.queueSplash(QString("-%1").arg(dmg), 80.0 + jitter(), 400.0 + jitter(), QColor("#FFFFFF"));
+        renderer.queueSplash(QString("-%1").arg(dmg), 80.0 + j2(), 400.0 + j2(), QColor("#FFFFFF"));
         m_cooldown = interval;
         return;
     }
 
     // ====== 发射子弹 ======
     Bullet b;
-    b.x = self.posX;
-    b.y = self.posY;
-    double tdx = target->posX - self.posX;
-    double tdy = target->posY - self.posY;
+    b.x = self.transform.x;
+    b.y = self.transform.y;
+    double tdx = target->transform.x - self.transform.x;
+    double tdy = target->transform.y - self.transform.y;
     double td = std::sqrt(tdx * tdx + tdy * tdy);
     double spd = 400.0;
     b.vx = tdx / td * spd;

@@ -1,6 +1,6 @@
 #include "alpha_behavior.h"
 #include "state.h"
-#include "render/renderer.h"
+#include "renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
@@ -30,15 +30,15 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
             {
                 if (!enemy.isAlive)
                     continue;
-                double dx = enemy.posX - self.posX;
-                double dy = enemy.posY - self.posY;
+                double dx = enemy.transform.x - self.transform.x;
+                double dy = enemy.transform.y - self.transform.y;
                 if (dx * dx + dy * dy < 14400.0)
                 {
                     int dmg = self.atk.getFinal();
-                    enemy.takeDamage(dmg);
+                    enemy.dealDamage(dmg, DamageType{DamageType::Physical, QColor("#FF8C32")});
                     renderer.queueSplash(QString("-%1").arg(dmg),
-                                         enemy.posX + jitter(),
-                                         enemy.posY - 20 + jitter(),
+                                         enemy.transform.x + jitter(),
+                                         enemy.transform.y - 20 + jitter(),
                                          QColor("#FF8C32"));
                     if (!enemy.isAlive)
                     {
@@ -54,14 +54,14 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
         if (m_weapon.rotationsDone >= 3)
         {
             m_weapon.active = false;
-            int spd = self.attackSpeed.getFinal();
+            int spd = self.baseAttackSpeed;
             m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
         }
 
         // 渲染：旋转的钻石剑图片
         double rotationDeg = m_weapon.angle * 180.0 / 3.14159265;
         renderer.queueImage(":/texture/projectile/diamond_sword.png",
-                            self.posX, self.posY,
+                            self.transform.x, self.transform.y,
                             rotationDeg, 1.0, Qt::AlignCenter, 90);
         return;
     }
@@ -71,14 +71,14 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
         return;
 
     // ---- 找最近敌人 ----
-    EnemyInstance *target = nullptr;
+    LivingEntity *target = nullptr;
     double bestDist = 1e18;
     for (auto &e : enemies)
     {
         if (!e.isAlive)
             continue;
-        double dx = e.posX - self.posX;
-        double dy = e.posY - self.posY;
+        double dx = e.transform.x - self.transform.x;
+        double dy = e.transform.y - self.transform.y;
         double d = std::sqrt(dx * dx + dy * dy);
         if (d < bestDist)
         {
@@ -90,16 +90,16 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
         return;
 
     // ---- 移动向目标（停在70px处）----
-    double dx = target->posX - self.posX;
-    double dy = target->posY - self.posY;
+    double dx = target->transform.x - self.transform.x;
+    double dy = target->transform.y - self.transform.y;
     double dist = std::sqrt(dx * dx + dy * dy);
     if (dist > 70.0)
     {
-        double spd = self.speed * 100.0 * dt;
+        double spd = self.transform.scaleX * 100.0 * dt;
         if (spd > dist - 70.0)
             spd = dist - 70.0;
-        self.posX += dx / dist * spd;
-        self.posY += dy / dist * spd;
+        self.transform.x += dx / dist * spd;
+        self.transform.y += dy / dist * spd;
     }
     else
     {
@@ -108,6 +108,6 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
         m_weapon.angle = 0.0;
         m_weapon.elapsed = 0.0;
         m_weapon.rotationsDone = 0;
-        m_weapon.targetUuid = target->uuid;
+        m_weapon.targetUuid = target->getUuid();
     }
 }

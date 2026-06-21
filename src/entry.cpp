@@ -6,7 +6,7 @@
 #include "unit_graphics_item.h"
 #include "database_manager.h"
 #include "shop_window.h"
-#include "render/renderer.h"
+#include "renderer.h"
 
 #include <QBrush>
 #include <QCoreApplication>
@@ -82,6 +82,13 @@ void MainWindow::initGame()
         // 创建渲染器并注入
         m_renderer = new Renderer(m_battleScene, this);
         m_gameManager->setRenderer(m_renderer);
+
+        // 受到伤害事件 -> 绘制跳字
+        connect(m_gameManager, &GameManager::receivedDamage, this,
+                [this](LivingEntity *entity, double amount, QColor color)
+                {
+                    // 处理受到伤害的逻辑
+                });
 
         // 回合阶段改变 → UI 刷新
         connect(m_gameManager, &GameManager::phaseChanged, this, [this](RoundPhase p)
@@ -280,16 +287,16 @@ void MainWindow::refreshAllUnits()
 
     for (const auto &chess : allyChesses)
     {
-        currentUuids.insert(chess.uuid);                                 // 记录当前存在的单位 UUID
-        UnitGraphicsItem *item = m_unitItems.value(chess.uuid, nullptr); // 查找已有的图形项
+        currentUuids.insert(chess.getUuid());                                 // 记录当前存在的单位 UUID
+        UnitGraphicsItem *item = m_unitItems.value(chess.getUuid(), nullptr); // 查找已有的图形项
 
         if (!item)
         {
             // 如果uuid对应不到图形项，则创建新的图形项并加入场景
-            item = new UnitGraphicsItem(chess.uuid, nullptr,
+            item = new UnitGraphicsItem(chess.getUuid(), nullptr,
                                         m_gameManager, m_renderer);
             m_battleScene->addItem(item);
-            m_unitItems[chess.uuid] = item;
+            m_unitItems[chess.getUuid()] = item;
             connect(item, &UnitGraphicsItem::dragStarted,
                     this, &MainWindow::onUnitDragStarted);
             connect(item, &UnitGraphicsItem::dragFinished,
@@ -301,7 +308,7 @@ void MainWindow::refreshAllUnits()
 
         if (chess.deployed)
         {
-            targetPos = QPointF(chess.posX, chess.posY);
+            targetPos = QPointF(chess.transform.x, chess.transform.y);
         }
         else
         {
@@ -313,13 +320,14 @@ void MainWindow::refreshAllUnits()
             targetPos = QPointF(cx, cy);
         }
 
-        item->setVisible(chess.isAlive && isPreparePhase);
+        item->setVisible(chess.stillAlive() && isPreparePhase);
         item->setPos(targetPos);
         item->setDraggable(isPreparePhase);
         item->update(); // 强制触发重绘，确保图片立即更新
 
         // 视觉由 behavior 决定，entry 只提供坐标和实例引用
-        if (chess.behavior && m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
+        // 只有存活的单位才渲染
+        if (chess.stillAlive() && chess.behavior && m_gameManager->getCurrentPhase() != RoundPhase::Prepare)
             chess.behavior->renderSelf(chess, *m_renderer, targetPos.x(), targetPos.y());
     }
 
@@ -507,8 +515,8 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
         {
             unit->deployed = true;
             unit->benchSlot = -1;
-            unit->posX = scenePos.x();
-            unit->posY = scenePos.y();
+            unit->transform.x = scenePos.x();
+            unit->transform.y = scenePos.y();
             print(QString("Deploy unit %1 to battlefield (%2,%3)")
                       .arg(uuid)
                       .arg(scenePos.x())
@@ -523,16 +531,16 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
         {
             unit->deployed = false;
             unit->benchSlot = targetSlot;
-            unit->posX = 0;
-            unit->posY = 0;
+            unit->transform.x = 0;
+            unit->transform.y = 0;
             print(QString("Undeploy unit %1 to bench slot %2").arg(uuid).arg(targetSlot));
         }
     }
     // ---- C: 战场内移动 ----
     else if (wasDeployed && isInBattlefieldLegalZone(scenePos))
     {
-        unit->posX = scenePos.x();
-        unit->posY = scenePos.y();
+        unit->transform.x = scenePos.x();
+        unit->transform.y = scenePos.y();
         print(QString("Move unit %1 on battlefield to (%2,%3)")
                   .arg(uuid)
                   .arg(scenePos.x())
@@ -560,7 +568,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
             ChessInstance *occupant = nullptr;
             for (auto &u : units)
             {
-                if (!u.deployed && u.benchSlot == rawSlot && u.uuid != uuid)
+                if (!u.deployed && u.benchSlot == rawSlot && u.getUuid() != uuid)
                 {
                     occupant = &u;
                     break;
@@ -570,7 +578,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
             {
                 occupant->benchSlot = oldBenchSlot;
                 unit->benchSlot = rawSlot;
-                print(QString("Swap bench slots: %1 ↔ %2").arg(uuid).arg(occupant->uuid));
+                print(QString("Swap bench slots: %1 ↔ %2").arg(uuid).arg(occupant->getUuid()));
             }
             else
             {

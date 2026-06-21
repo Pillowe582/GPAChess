@@ -39,7 +39,7 @@ private:
     DatabaseManager *m_db;
     GameManager *m_gameManager;
     QStringListModel *m_listModel;
-    std::vector<ChessConfig> m_currentShopItems;
+    std::vector<AllyConfig> m_currentShopItems;
     int m_selectedIndex = -1;
 };
 

@@ -6,7 +6,7 @@
 #include <QString>
 #include <QPointF>
 #include "game_manager.h"
-#include "render/renderer.h"
+#include "renderer.h"
 
 /// 战场上/备战席上的一个可拖拽单位图形项
 class UnitGraphicsItem : public QGraphicsObject

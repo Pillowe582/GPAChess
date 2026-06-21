@@ -1,6 +1,6 @@
 #include "entity/ally_behavior.h"
 #include "state.h"
-#include "render/renderer.h"
+#include "renderer.h"
 #include "allies/alpha/alpha_behavior.h"
 #include "allies/beta/beta_behavior.h"
 
@@ -22,7 +22,7 @@ void AllyBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
     // 绘制棋子图片
     renderer.queueImage(texturePath, x, y, 0.0, scale, Qt::AlignCenter, 10);
 
-    int maxHp = self.hp.getFinal();
+    int maxHp = self.maxHp.getFinal();
     if (maxHp <= 0)
         return;
     double hpRatio = std::clamp(static_cast<double>(self.currentHp) / maxHp, 0.0, 1.0);

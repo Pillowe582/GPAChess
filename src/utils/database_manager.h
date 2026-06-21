@@ -13,9 +13,9 @@ class DatabaseManager : public QObject
 public:
     explicit DatabaseManager(const QString &appDir, QObject *parent = nullptr);
 
-    const std::vector<ChessConfig> &allChessConfigs() const { return m_chessConfigs; }
+    const std::vector<AllyConfig> &allAllyConfigs() const { return m_allyConfigs; }
     const std::vector<EnemyConfig> &allEnemyConfigs() const { return m_enemyConfigs; }
-    const ChessConfig *findChess(int configId) const;
+    const AllyConfig *findAlly(int configId) const;
     const EnemyConfig *findEnemy(int configId) const;
 
 private:
@@ -24,7 +24,7 @@ private:
 
     QSqlDatabase m_chessDb;
     QSqlDatabase m_enemyDb;
-    std::vector<ChessConfig> m_chessConfigs;
+    std::vector<AllyConfig> m_allyConfigs;
     std::vector<EnemyConfig> m_enemyConfigs;
 };
 

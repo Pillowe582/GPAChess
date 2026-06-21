@@ -38,7 +38,7 @@ void ShopWindow::refreshShop()
     ui->propertyLabel->setText("");
     ui->purchaseButton->setEnabled(false);
 
-    const auto &all = m_db->allChessConfigs();
+    const auto &all = m_db->allAllyConfigs();
     if (all.empty())
         return;
 
@@ -78,7 +78,7 @@ void ShopWindow::onPurchaseClicked()
     if (m_selectedIndex < 0 || m_selectedIndex >= static_cast<int>(m_currentShopItems.size()))
         return;
 
-    const ChessConfig &cfg = m_currentShopItems[m_selectedIndex];
+    const AllyConfig &cfg = m_currentShopItems[m_selectedIndex];
     auto &assets = m_gameManager->getPlayerAssets();
 
     if (assets.gold < cfg.cost)
@@ -94,7 +94,11 @@ void ShopWindow::onPurchaseClicked()
 
     assets.gold -= cfg.cost;
     int slot = assets.firstEmptyBenchSlot();
-    ChessInstance inst(cfg);
+    ChessInstance inst(cfg, m_gameManager);
+
+    // 连接新购买单位的受伤信号
+    // QObject::connect(&inst, &LivingEntity::receivedDamage, m_gameManager, &GameManager::receivedDamage);
+
     inst.deployed = false;
     inst.benchSlot = slot;
     inst.behavior.reset(createAllyBehavior(inst.behaviorId));

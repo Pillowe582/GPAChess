@@ -1,6 +1,6 @@
 #include "entity/enemy_behavior.h"
 #include "state.h"
-#include "render/renderer.h"
+#include "renderer.h"
 #include "enemies/alpha/alpha_behavior.h"
 #include "enemies/beta/beta_behavior.h"
 
@@ -23,7 +23,7 @@ void EnemyBehavior::renderSelf(const EnemyInstance &self, Renderer &renderer,
     double barX = x - barW / 2.0, barY = y - 55.0; // 调整到图片上方
     renderer.queueRect(barX, barY, barW, barH, QColor("#7b7b7b"), 20);
 
-    int maxHp = self.hp.getFinal();
+    int maxHp = self.maxHp.getFinal();
     double hpRatio = maxHp > 0 ? std::clamp(static_cast<double>(self.currentHp) / maxHp, 0.0, 1.0) : 0.0;
     renderer.queueRect(barX, barY, barW * hpRatio, barH, QColor("#DC3C3C"), 21);
 

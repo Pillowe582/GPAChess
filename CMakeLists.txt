@@ -43,5 +43,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE Qt6::Widgets Qt6::Sql Qt6::Network
 
 # 这样就可以直接 #include "xxx.h" 了
 target_include_directories(${PROJECT_NAME} PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/entity")
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/entity"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/utils")

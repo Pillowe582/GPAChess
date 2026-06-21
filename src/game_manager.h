@@ -120,6 +120,8 @@ signals:
     void splashText(const QString &text, double x, double y, const QString &color);
     /// 游戏结束
     void gameOver(double finalGpa);
+    /// 实体受到伤害（转发生 LivingEntity 的信号）
+    void receivedDamage(LivingEntity *entity, double amount, QColor color);
 
 private slots:
     void onTick();

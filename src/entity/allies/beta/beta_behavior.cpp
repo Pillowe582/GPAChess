@@ -1,6 +1,6 @@
 #include "beta_behavior.h"
 #include "state.h"
-#include "render/renderer.h"
+#include "renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
@@ -30,14 +30,14 @@ void BetaAlly::tick(double dt, ChessInstance &self,
         {
             if (!enemy.isAlive)
                 continue;
-            double dx = b.x - enemy.posX;
-            double dy = b.y - enemy.posY;
+            double dx = b.x - enemy.transform.x;
+            double dy = b.y - enemy.transform.y;
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
                 enemy.takeDamage(b.damage);
                 renderer.queueSplash(QString("-%1").arg(b.damage),
-                                     enemy.posX + jitter(),
-                                     enemy.posY - 20 + jitter(),
+                                     enemy.transform.x + jitter(),
+                                     enemy.transform.y - 20 + jitter(),
                                      QColor("#64DC50"));
                 if (!enemy.isAlive)
                 {
@@ -67,8 +67,8 @@ void BetaAlly::tick(double dt, ChessInstance &self,
     {
         if (!e.isAlive)
             continue;
-        double dx = e.posX - self.posX;
-        double dy = e.posY - self.posY;
+        double dx = e.transform.x - self.transform.x;
+        double dy = e.transform.y - self.transform.y;
         double d = std::sqrt(dx * dx + dy * dy);
         if (d > bestDist)
         {
@@ -81,10 +81,10 @@ void BetaAlly::tick(double dt, ChessInstance &self,
 
     // ====== 发射子弹 ======
     Bullet b;
-    b.x = self.posX;
-    b.y = self.posY;
-    double tdx = target->posX - self.posX;
-    double tdy = target->posY - self.posY;
+    b.x = self.transform.x;
+    b.y = self.transform.y;
+    double tdx = target->transform.x - self.transform.x;
+    double tdy = target->transform.y - self.transform.y;
     double td = std::sqrt(tdx * tdx + tdy * tdy);
     double spd = 400.0; // 子弹速度 400px/s
     b.vx = tdx / td * spd;
@@ -92,6 +92,6 @@ void BetaAlly::tick(double dt, ChessInstance &self,
     b.damage = self.atk.getFinal();
     m_bullets.push_back(b);
 
-    int atkSpd = self.attackSpeed.getFinal();
+    int atkSpd = self.baseAttackSpeed;
     m_cooldown = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;
 }

@@ -1,4 +1,4 @@
-#include "render/renderer.h"
+#include "renderer.h"
 
 #include <QGraphicsScene>
 #include <QGraphicsEllipseItem>
@@ -9,6 +9,7 @@
 #include <QPen>
 #include <QTimer>
 #include <QVariantAnimation>
+#include <QRandomGenerator>
 #include <algorithm>
 #include <cmath>
 
@@ -140,11 +141,16 @@ void Renderer::flush()
         {
             QFont ftFont("Microsoft YaHei", 20);
             ftFont.setBold(true);
+            
+            // 随机初始偏移
+            auto rng = QRandomGenerator::global();
+            double offsetX = (rng->generateDouble() - 0.5) * 30.0;
+            double offsetY = (rng->generateDouble() - 0.5) * 30.0;
 
             auto *font = m_scene->addSimpleText(q.text);
             font->setFont(ftFont);
             font->setBrush(q.color);
-            font->setPos(q.x - font->boundingRect().width() / 2.0, q.y - 30.0);
+            font->setPos(q.x - font->boundingRect().width() / 2.0 + offsetX, q.y - 30.0 + offsetY);
             font->setTransformOriginPoint(font->boundingRect().center());
             font->setZValue(500);
             font->setScale(4.0);

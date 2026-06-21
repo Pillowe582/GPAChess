@@ -26,7 +26,7 @@ void DatabaseManager::openDb(const QString &path, const QString &connName, QSqlD
 /// @brief 从数据库加载配置数据到内存
 void DatabaseManager::loadFromDb()
 {
-    m_chessConfigs.clear();
+    m_allyConfigs.clear();
     m_enemyConfigs.clear();
 
     // 验证并加载 chess_config
@@ -36,23 +36,23 @@ void DatabaseManager::loadFromDb()
     while (chessSqlQuery.next())
     {
         hasChessData = true; // 只要能读到至少一行数据就认为表存在且不空
-        ChessConfig chessConfigItem;
-        chessConfigItem.configId = chessSqlQuery.value(0).toInt();
-        chessConfigItem.name = chessSqlQuery.value(1).toString();
-        chessConfigItem.cost = chessSqlQuery.value(2).toInt();
-        chessConfigItem.baseHp = chessSqlQuery.value(3).toInt();
-        chessConfigItem.baseAtk = chessSqlQuery.value(4).toInt();
-        chessConfigItem.baseDef = chessSqlQuery.value(5).toInt();
-        chessConfigItem.hpGrowthMultiplier = chessSqlQuery.value(6).toFloat();
-        chessConfigItem.atkGrowthMultiplier = chessSqlQuery.value(7).toFloat();
-        chessConfigItem.attackRange = chessSqlQuery.value(8).toInt();
-        chessConfigItem.baseAttackSpeed = chessSqlQuery.value(9).toFloat();
-        chessConfigItem.maxMp = chessSqlQuery.value(10).toInt();
-        chessConfigItem.speed = chessSqlQuery.value(11).toDouble();
-        chessConfigItem.description = chessSqlQuery.value(12).toString();
-        chessConfigItem.bonds = chessSqlQuery.value(13).toString().split(',', Qt::SkipEmptyParts);
-        chessConfigItem.behaviorId = chessSqlQuery.value(14).toInt();
-        m_chessConfigs.push_back(chessConfigItem);
+        AllyConfig allyConfigItem;
+        allyConfigItem.configId = chessSqlQuery.value(0).toInt();
+        allyConfigItem.name = chessSqlQuery.value(1).toString();
+        allyConfigItem.cost = chessSqlQuery.value(2).toInt();
+        allyConfigItem.baseHp = chessSqlQuery.value(3).toInt();
+        allyConfigItem.baseAtk = chessSqlQuery.value(4).toInt();
+        allyConfigItem.baseDef = chessSqlQuery.value(5).toInt();
+        allyConfigItem.hpGrowthMultiplier = chessSqlQuery.value(6).toFloat();
+        allyConfigItem.atkGrowthMultiplier = chessSqlQuery.value(7).toFloat();
+        allyConfigItem.attackRange = chessSqlQuery.value(8).toInt();
+        allyConfigItem.baseAttackSpeed = chessSqlQuery.value(9).toFloat();
+        allyConfigItem.maxMp = chessSqlQuery.value(10).toInt();
+        allyConfigItem.speed = chessSqlQuery.value(11).toDouble();
+        allyConfigItem.description = chessSqlQuery.value(12).toString();
+        allyConfigItem.bonds = chessSqlQuery.value(13).toString().split(',', Qt::SkipEmptyParts);
+        allyConfigItem.behaviorId = chessSqlQuery.value(14).toInt();
+        m_allyConfigs.push_back(allyConfigItem);
     }
     if (!hasChessData)
     {
@@ -93,9 +93,9 @@ void DatabaseManager::loadFromDb()
 /// @brief  根据 configId 查找棋子配置
 /// @param configId
 /// @return 找到则返回指向配置的指针，否则返回 nullptr
-const ChessConfig *DatabaseManager::findChess(int configId) const
+const AllyConfig *DatabaseManager::findAlly(int configId) const
 {
-    for (const auto &c : m_chessConfigs)
+    for (const auto &c : m_allyConfigs)
     {
         if (c.configId == configId)
 
