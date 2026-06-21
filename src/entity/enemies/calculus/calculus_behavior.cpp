@@ -19,7 +19,7 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
 
         m_weapon.elapsed += dt;
         m_weapon.angle += (m_weapon.rotSpeed * 3.14159265) * dt / 0.2;
-        m_weapon.rotSpeed += m_weapon.rotSpeed * dt; // 加速旋转
+        m_weapon.rotSpeed += 1.5 * m_weapon.rotSpeed * dt; // 加速旋转
 
         int currentRot = -1 * static_cast<int>(m_weapon.angle / (2.0 * 3.14159265));
         if (currentRot > m_weapon.rotationsDone)
@@ -35,8 +35,6 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
                 {
                     int dmg = self.atk.getFinal();
                     ally->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#00ffc3")});
-
-                    break;
                 }
             }
         }
@@ -49,7 +47,7 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
             m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
         }
 
-        // 渲染：旋转的钻石剑图片
+        // 渲染：旋转的环路积分图片
         double rotationDeg = m_weapon.angle * 180.0 / 3.14159265;
         renderer.queueImage(":/texture/projectile/oint.png",
                             self.transform.x + 50 * m_targetVec.normalized().x(), self.transform.y + 50 * m_targetVec.normalized().y(),
