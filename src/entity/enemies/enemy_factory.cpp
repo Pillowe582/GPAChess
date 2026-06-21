@@ -1,7 +1,7 @@
 #include "entity/enemy_behavior.h"
 #include "state.h"
 #include "renderer.h"
-#include "enemies/wxf/wxf_behavior.h"
+#include "enemies/calculus/calculus_behavior.h"
 #include "enemies/beta/beta_behavior.h"
 
 #include <algorithm>
@@ -38,10 +38,10 @@ EnemyBehavior *createEnemyBehavior(int behaviorId)
     switch (behaviorId)
     {
     case 1:
-        return new WXFEnemy();
+        return new CalculusEnemy();
     case 2:
         return new BetaEnemy();
     default:
-        return new WXFEnemy();
+        return new CalculusEnemy();
     }
 }

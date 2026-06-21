@@ -31,13 +31,14 @@ void TowerBehavior::tick(double dt,
     if (it == enemies.end())
         return;
 
-    // 伤害 = 100 × (1 + (1 - HP%) × 100)
+    // 伤害 = 敌人血量上限 × (1 + (1 - HP%) × 2)
     double hpRatio = self.maxHp.getFinal() > 0
                          ? self.currentHp / self.maxHp.getFinal()
                          : 1.0;
-    int dmg = static_cast<int>(100.0 * (1.0 + (1.0 - hpRatio) * 100.0));
 
-    it->dealDamage(dmg, DamageType{DamageType::Physical, QColor("#4696FF")});
+    int dmg = static_cast<int>(it->maxHp.getFinal() * (0.01 + (1.0 - hpRatio) * 2.0));
+
+    it->dealDamage(dmg, DamageType{DamageType::True, QColor("#46a6ff")});
 
     if (!it->isAlive)
     {
@@ -53,9 +54,9 @@ void TowerBehavior::tick(double dt,
 void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
                                double x, double y)
 {
-    const double tx = 10.0, ts = 64.0, ty = 400.0 - ts / 2.0;
+    const double tx = 10.0, ts = 128.0, ty = 400.0 - ts / 2.0;
     QString texturePath = ":/texture/entity/tower.png";
-    renderer.queueImage(texturePath, tx + ts / 2.0, ty + ts / 2.0, 0.0, 0.5, Qt::AlignCenter, 10);
+    renderer.queueImage(texturePath, tx + ts / 2.0, ty + ts / 2.0, 0.0, 1.0, Qt::AlignCenter, 10);
 
     double hpRatio = self.maxHp.getFinal() > 0
                          ? std::clamp(self.currentHp / self.maxHp.getFinal(), 0.0, 1.0)
@@ -68,7 +69,7 @@ void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
     double gpa = hpRatio * 4.0;
     renderer.queueText(QString::number(gpa, 'f', 1),
                        tx + ts / 2.0 - 10.0, ty + ts / 2.0 - 10.0,
-                       Qt::black, 8);
+                       Qt::black, 100);
 }
 
 // ========== Paint 渲染 ==========

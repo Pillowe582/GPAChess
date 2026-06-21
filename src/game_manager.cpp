@@ -65,7 +65,7 @@ void GameManager::initialize()
         auto towerInst = std::make_unique<ChessInstance>(towerCfg, this);
         towerInst->isTower = true;
         towerInst->deployed = true;
-        towerInst->transform.x = 45.0;
+        towerInst->transform.x = 200.0;
         towerInst->transform.y = 400.0;
         towerInst->behavior.reset(new TowerBehavior());
         m_player.ownedChesses.push_back(std::move(towerInst));
@@ -78,7 +78,7 @@ void GameManager::initialize()
                 break;
             }
     }
-    
+
     // 开局免费给n个随机角色放在备战席
     const auto &pool = m_database->allAllyConfigs();
     const int starterCount = 2;
@@ -92,8 +92,6 @@ void GameManager::initialize()
         inst->behavior.reset(createAllyBehavior(inst->behaviorId));
         m_player.ownedChesses.push_back(std::move(inst));
     }
-
-    
 
     emit phaseChanged(m_phase);
 }
@@ -383,8 +381,7 @@ void GameManager::openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(i
                 }
                 // 商店关闭后，如果之前定时器是激活的，则重新启动
                 if (wasTimerActive)
-                    m_tickTimer->start();
-            });
+                    m_tickTimer->start(); });
     m_shopWindow->refreshShop();
     m_shopWindow->show();
 }
@@ -424,7 +421,8 @@ void GameManager::checkAndMergeStars()
                 size_t target = a;
                 auto rank = [&](size_t idx) -> int
                 {
-                    if (!units[idx]) return 999;
+                    if (!units[idx])
+                        return 999;
                     if (units[idx]->deployed)
                         return 0;
                     return units[idx]->benchSlot + 1;
@@ -434,7 +432,8 @@ void GameManager::checkAndMergeStars()
                 if (rank(c) < rank(target))
                     target = c;
 
-                if (!units[target]) continue; // 安全检查
+                if (!units[target])
+                    continue; // 安全检查
                 units[target]->starLevel++;
                 units[target]->calculateBaseStatsByStar();
                 units[target]->resetStatus();
@@ -453,12 +452,13 @@ void GameManager::checkAndMergeStars()
                 }
                 if (d1 > d2)
                     std::swap(d1, d2);
-                
+
                 // 先删除较大索引，再删除较小索引，避免索引偏移
                 units.erase(units.begin() + static_cast<long long>(d2));
                 units.erase(units.begin() + static_cast<long long>(d1));
 
-                if (units[target]) {
+                if (units[target])
+                {
                     print(QString("Merged 3x %1★%2 → %3★%4 (uuid=%5)")
                               .arg(star)
                               .arg(cfgId)

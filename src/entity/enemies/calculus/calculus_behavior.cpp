@@ -1,13 +1,13 @@
-#include "wxf_behavior.h"
+#include "calculus_behavior.h"
 #include "state.h"
 #include "renderer.h"
 #include <cmath>
 #include <QRandomGenerator>
 
-void WXFEnemy::tick(double dt, EnemyInstance &self,
-                    std::vector<std::unique_ptr<ChessInstance>> &allies,
-                    Renderer &renderer,
-                    int &pendingGold, int &pendingExp)
+void CalculusEnemy::tick(double dt, EnemyInstance &self,
+                         std::vector<std::unique_ptr<ChessInstance>> &allies,
+                         Renderer &renderer,
+                         int &pendingGold, int &pendingExp)
 {
 
     // ====== 近战逻辑 ======

@@ -1,13 +1,13 @@
-#ifndef WXF_ENEMY_H
-#define WXF_ENEMY_H
+#ifndef CALCULUS_ENEMY_H
+#define CALCULUS_ENEMY_H
 #include "entity/enemy_behavior.h"
 #include <memory>
 #include <QVector2D>
 
 class ChessInstance;
 
-/// WXF 敌方：近战，找最近我方单位，移动到70px后3圈武器挥砍
-class WXFEnemy : public EnemyBehavior
+/// 微积分 敌方：近战，找最近我方单位，移动到70px后，挥舞武器
+class CalculusEnemy : public EnemyBehavior
 {
 public:
     void tick(double dt, EnemyInstance &self,
