@@ -124,8 +124,8 @@ private slots:
 
 private:
     void transitionPhase(RoundPhase newPhase);
-    void spawnEnemies(int roundNumber);
-    std::vector<EnemyConfig> pickRandomEnemies(int count, int roundNumber);
+    void spawnEnemies(int roundNumber, int count, bool mandatory = true);
+    std::vector<EnemyConfig> pickRandomEnemies(int roundNumber, int count, bool mandatory = true);
     void tickBehaviors(double deltaSeconds);
     bool checkCombatEndConditions(bool &outVictory);
     void resetUnitsForNextRound();
@@ -150,6 +150,10 @@ private:
     int m_guaranteedGold = 10;
     int m_pendingGold = 0; // 战斗中获得的临时金币
     int m_pendingExp = 0;  // 战斗中获得的临时经验
+
+    // Elective 敌人生成追踪
+    int m_electiveEnemiesNotSpawned = 0;    // 未生成的 elective 敌人数量
+    bool m_mandatoryEnemiesCleared = false; // 必修敌人是否已清除
 
     // 最大回合数
     int m_maxRounds = 10;

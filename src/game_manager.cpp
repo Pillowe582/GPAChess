@@ -137,6 +137,10 @@ void GameManager::startRound(int roundNumber)
     m_roundStartExp = m_player.exp;
     m_timeAccumulator = 0.0;
 
+    // 重置 elective 追踪状态
+    m_electiveEnemiesNotSpawned = m_roundInfos[m_roundNumber].electiveEnemies;
+    m_mandatoryEnemiesCleared = false;
+
     // 快照所有已部署单位的战场位置，用于回合结束后复位
     for (auto &u : m_player.ownedChesses)
     {
@@ -148,7 +152,7 @@ void GameManager::startRound(int roundNumber)
     }
 
     transitionPhase(RoundPhase::Combat);
-    spawnEnemies(m_roundNumber);
+    spawnEnemies(m_roundNumber, m_roundInfos[m_roundNumber].creditWorth + 2, true);
 
     // ====== 通知所有 behavior：回合开始 ======
     for (const auto &u : m_player.ownedChesses)
@@ -237,26 +241,25 @@ void GameManager::transitionPhase(RoundPhase newPhase)
 }
 
 // % 敌方生成逻辑
-void GameManager::spawnEnemies(int roundNumber)
+void GameManager::spawnEnemies(int roundNumber, int count, bool mandatory)
 {
     m_enemies.clear();
 
     // 根据回合数决定敌方数量
-    int count = 3 + (roundNumber > 5 ? 1 : 0);
-    auto picked = pickRandomEnemies(count, roundNumber);
+    auto picked = pickRandomEnemies(roundNumber, count, mandatory);
 
     for (size_t i = 0; i < picked.size(); ++i)
     {
         m_enemies.emplace_back(picked[i], false, roundNumber, this);
         EnemyInstance &e = m_enemies.back();
-
+        e.isRequired = mandatory;
         e.behavior.reset(createEnemyBehavior(picked[i].behaviorId));
         e.transform.x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
         e.transform.y = 160.0 + (static_cast<double>(i / 3) * 180.0);
     }
 }
 
-std::vector<EnemyConfig> GameManager::pickRandomEnemies(int count, int roundNumber)
+std::vector<EnemyConfig> GameManager::pickRandomEnemies(int roundNumber, int count, bool mandatory)
 {
     std::vector<EnemyConfig> result;
     if (!m_database)
@@ -271,8 +274,8 @@ std::vector<EnemyConfig> GameManager::pickRandomEnemies(int count, int roundNumb
     {
         int idx = m_rng.bounded(static_cast<int>(pool.size()));
         EnemyConfig cfg = pool[idx];
-        cfg.baseHp += roundNumber * 10;
-        cfg.baseAtk += roundNumber * 3;
+        cfg.baseHp += roundNumber * cfg.hpGrowthMultiplier;
+        cfg.baseAtk += roundNumber * cfg.atkGrowthMultiplier;
         result.push_back(cfg);
     }
     return result;
@@ -328,17 +331,34 @@ void GameManager::tickBehaviors(double deltaSeconds)
 }
 
 // % 检查战斗结束
+
+/// @brief 检查战斗结束条件
+/// @param outVictory 我方是否胜利
+/// @return 是否结束战斗
 bool GameManager::checkCombatEndConditions(bool &outVictory)
 {
+    // 检查我方是否还有单位存活
+    bool anyAllyAlive = std::any_of(m_player.ownedChesses.begin(), m_player.ownedChesses.end(),
+                                    [](const std::unique_ptr<ChessInstance> &ally)
+                                    { return ally->isAlive; });
     bool anyEnemyAlive = std::any_of(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
                                      { return e.isAlive; });
 
-    // 敌方全灭 → 胜利（无论我方是否存活，塔可以收尾）
-    if (!anyEnemyAlive)
+    // 检查是否有必修敌人存活
+    bool anyMandatoryAlive = std::any_of(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
+                                         { return e.isAlive && e.isRequired; });
+
+    if (!anyAllyAlive && m_mandatoryEnemiesCleared)
     {
-        print("必修敌人已被消灭！");
+        print("所有我方单位已阵亡，但已取得必修学分");
         outVictory = true;
         return true;
+    }
+    // 如果必修敌人刚被消灭，标记状态
+    if (!anyMandatoryAlive && !m_mandatoryEnemiesCleared)
+    {
+        m_mandatoryEnemiesCleared = true;
+        print("必修敌人已被消灭！");
     }
 
     // 塔被摧毁 → 失败
@@ -346,6 +366,43 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     {
         print("塔已被摧毁！");
         outVictory = false;
+        return true;
+    }
+
+    // 敌方全灭时的处理
+    if (!anyEnemyAlive)
+    {
+        // 如果必修敌人已清除，但还有 elective 波次未生成
+        if (m_mandatoryEnemiesCleared && m_electiveEnemiesNotSpawned > 0)
+        {
+
+            if (anyAllyAlive)
+            {
+                // 生成选修敌人
+                --m_electiveEnemiesNotSpawned;
+                print(QString("生成一只选修敌人"));
+                int electiveCount = 1;
+                auto picked = pickRandomEnemies(m_roundNumber, electiveCount, false);
+
+                for (size_t i = 0; i < picked.size(); ++i)
+                {
+                    m_enemies.emplace_back(picked[i], false, m_roundNumber, this);
+                    EnemyInstance &e = m_enemies.back();
+                    e.isRequired = false; // 选修
+                    e.behavior.reset(createEnemyBehavior(picked[i].behaviorId));
+                    e.transform.x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
+                    e.transform.y = 160.0 + (static_cast<double>(i / 3) * 180.0);
+                }
+
+                // 不结束战斗，继续战斗
+                outVictory = false;
+                return false;
+            }
+        }
+
+        // 所有敌人都消灭了，胜利
+        print("所有敌人已被消灭！");
+        outVictory = true;
         return true;
     }
 

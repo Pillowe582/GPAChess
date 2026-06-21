@@ -78,7 +78,7 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
     }
 
     // 如果所有非塔单位都阵亡，则攻击塔
-    if (!target)
+    if (!target && self.isRequired)
     {
         for (auto &ally : allies)
         {
