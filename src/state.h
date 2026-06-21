@@ -207,10 +207,15 @@ public:
 
     void calculateBaseStatsByStar()
     {
+        // 从图鉴数值初始化
+        maxHp.base = baseHp;
+        maxDef.base = baseDef;
+        maxSpeed.base = speed;
+        atk.base = baseAtk;
         for (int i = 1; i < starLevel; ++i)
         {
-            maxHp.base *= hpGrowthMultiplier;
-            atk.base *= atkGrowthMultiplier;
+            maxHp.base = static_cast<int>(maxHp.base * hpGrowthMultiplier);
+            atk.base = static_cast<int>(atk.base * atkGrowthMultiplier);
         }
     }
 
@@ -232,9 +237,17 @@ public:
                   GameManager *mgr = nullptr)
         : EnemyConfig(cfg), LivingEntity(mgr), isRequired(required)
     {
-        maxHp.base *= 1.0 + (round - 1) * hpGrowthMultiplier;
-        atk.base *= 1.0 + (round - 1) * atkGrowthMultiplier;
+        // 从图鉴数值初始化
+        maxHp.base = baseHp;
+        maxDef.base = baseDef;
+        maxSpeed.base = speed;
+        atk.base = baseAtk;
+        // 回合数成长
+        maxHp.base = static_cast<int>(maxHp.base * (1.0 + (round - 1) * hpGrowthMultiplier));
+        atk.base = static_cast<int>(atk.base * (1.0 + (round - 1) * atkGrowthMultiplier));
         currentHp = maxHp.getFinal();
+        currentDef = maxDef.getFinal();
+        currentSpeed = maxSpeed.getFinal();
         isAlive = true;
     }
 
