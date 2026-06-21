@@ -94,7 +94,10 @@ void BetaAlly::tick(double dt, ChessInstance &self,
 
 void BetaAlly::onStart(ChessInstance &self)
 {
-    // 战斗开始时设置初始冷却时间，避免立即发射子弹
+    // 战斗开始时清空上一回合残留的子弹
+    m_bullets.clear();
+    
+    // 设置初始冷却时间，避免立即发射子弹
     int atkSpd = self.baseAttackSpeed;
     m_cooldown = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;
 }

@@ -129,7 +129,15 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
 
 void CalculusEnemy::onStart(EnemyInstance &self)
 {
-    // 战斗开始时设置初始冷却时间，避免立即发动攻击
+    // 战斗开始时重置武器状态，避免残留上一回合的挥砍动画
+    m_weapon.active = false;
+    m_weapon.angle = 0.0;
+    m_weapon.elapsed = 0.0;
+    m_weapon.rotSpeed = -0.5f;
+    m_weapon.rotationsDone = 0;
+    m_weapon.targetUuid = -1;
+    
+    // 设置初始冷却时间，避免立即发动攻击
     int spd = self.baseAttackSpeed;
     m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
 }
