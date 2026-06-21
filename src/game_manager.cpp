@@ -157,10 +157,10 @@ void GameManager::startRound(int roundNumber)
     // ====== 通知所有 behavior：回合开始 ======
     for (const auto &u : m_player.ownedChesses)
         if (u && u->behavior)
-            u->behavior->onStart();
+            u->behavior->onStart(*u);
     for (auto &e : m_enemies)
         if (e.behavior)
-            e.behavior->onStart();
+            e.behavior->onStart(e);
 
     m_tickTimer->start();
 }

@@ -14,6 +14,8 @@ public:
               int &pendingGold,
               int &pendingExp) override;
 
+    void onStart(ChessInstance &self);
+
     void renderSelf(const ChessInstance &self, Renderer &r,
                     double x, double y) override;
     void renderSelf(const ChessInstance &self, QPainter &p,

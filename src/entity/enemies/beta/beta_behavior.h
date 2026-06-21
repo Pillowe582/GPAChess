@@ -14,6 +14,8 @@ public:
               Renderer &renderer,
               int &pendingGold, int &pendingExp) override;
 
+    void onStart(EnemyInstance &self);
+
 private:
     struct Bullet
     {

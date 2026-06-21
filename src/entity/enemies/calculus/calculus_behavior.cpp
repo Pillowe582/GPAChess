@@ -126,3 +126,10 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
         m_weapon.targetUuid = target->getUuid();
     }
 }
+
+void CalculusEnemy::onStart(EnemyInstance &self)
+{
+    // 战斗开始时设置初始冷却时间，避免立即发动攻击
+    int spd = self.baseAttackSpeed;
+    m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
+}

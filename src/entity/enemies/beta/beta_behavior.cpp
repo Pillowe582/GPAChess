@@ -108,3 +108,11 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
     m_bullets.push_back(b);
     m_cooldown = interval;
 }
+
+void BetaEnemy::onStart(EnemyInstance &self)
+{
+    // 战斗开始时设置初始冷却时间，避免立即发射子弹
+    int atkSpd = self.baseAttackSpeed;
+    double interval = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;
+    m_cooldown = interval;
+}

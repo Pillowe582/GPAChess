@@ -19,6 +19,9 @@ public:
                       int &pendingGold,
                       int &pendingExp) = 0;
 
+    /// 回合开始时调用，用于初始化技能冷却等状态
+    virtual void onStart(ChessInstance & /*self*/) { /* 默认空实现 */ }
+
     /// Queue 渲染 —— refreshAllUnits 调用，通过 Renderer 队列绘制
     virtual void renderSelf(const ChessInstance &self, Renderer &r,
                             double x, double y);

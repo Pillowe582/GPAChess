@@ -11,6 +11,8 @@ public:
               Renderer &renderer,
               int &pendingGold, int &pendingExp) override;
 
+    void onStart(ChessInstance &self);
+
 private:
     // ---- 此角色自有的子弹数据 ----
     struct Bullet

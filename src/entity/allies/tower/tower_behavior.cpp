@@ -78,3 +78,10 @@ void TowerBehavior::renderSelf(const ChessInstance &self, QPainter &p,
 {
     return; // 塔不使用 Paint 渲染
 }
+
+// ========== 回合开始 ==========
+void TowerBehavior::onStart(ChessInstance &self)
+{
+    // 战斗开始时设置初始攻击冷却，避免塔立即开火
+    m_attackCooldown = 1.5; // 塔的攻击间隔为1.5秒
+}
