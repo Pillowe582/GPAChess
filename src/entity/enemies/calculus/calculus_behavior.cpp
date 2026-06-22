@@ -51,6 +51,7 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
     // 3. MP 满 → 发动大招
     if (self.currentMp >= self.maxMp)
     {
+        m_differentialPen.setColor(QColor("#a4f9e7"));
         m_differential.reset();
         findInfSupAlly(allies, self, m_differential.infX, m_differential.supX);
         m_differential.active = true;
@@ -187,17 +188,20 @@ void CalculusEnemy::updatePos(double dt, EnemyInstance &self, AllyInstance *targ
     double dx = target->transform.x - self.transform.x;
     double dy = target->transform.y - self.transform.y;
     double dist = std::sqrt(dx * dx + dy * dy);
-    if (dist > 100.0)
+    double spd = self.speed * 100.0 * dt;
+
+    if (dist > 90.0)
     {
-        double spd = self.speed * 100.0 * dt;
-        if (spd > dist - 70.0)
-            spd = dist - 70.0;
+
+        if (spd > dist - 90.0)
+            spd = dist - 90.0;
         self.transform.x += dx / dist * spd;
         self.transform.y += dy / dist * spd;
     }
     else if (dist < 70.0)
     {
-        double spd = -self.speed * 100.0 * dt;
+        if (spd > 70.0 - dist)
+            spd = 70.0 - dist;
         self.transform.x -= dx / dist * spd;
         self.transform.y -= dy / dist * spd;
     }
