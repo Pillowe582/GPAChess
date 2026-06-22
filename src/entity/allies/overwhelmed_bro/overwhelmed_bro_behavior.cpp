@@ -12,7 +12,7 @@ void OverwhelmedBroAlly::onStart(AllyInstance &self)
     m_bullets.clear();
 
     // 清空热带风味
-    m_teaSpout.timePassed = -1;
+    m_teaSpout.elapsedTime = -1;
     m_teaSpout.hitCount = 0;
 
     // 计算技能冷却时间
@@ -33,7 +33,7 @@ void OverwhelmedBroAlly::tick(double dt, BaseEntity &baseSelf, GameManager &game
 
     // 1. 推进已有子弹并检测碰撞
     updateBullets(dt, self, gameManager);
-    if (m_teaSpout.timePassed >= 0)
+    if (m_teaSpout.elapsedTime >= 0)
     {
         updateTropicalTeaSpout(dt, self, gameManager);
     }
@@ -54,7 +54,7 @@ void OverwhelmedBroAlly::tick(double dt, BaseEntity &baseSelf, GameManager &game
         m_teaSpout.x = self.transform.x;
         m_teaSpout.y = self.transform.y;
         m_teaSpout.rot = 0.0;
-        m_teaSpout.timePassed = 0.0;
+        m_teaSpout.elapsedTime = 0.0;
         m_teaSpout.hitCount = 0;
         m_teaSpout.damage = static_cast<int>(self.atk.getFinal() * 0.5);
 
@@ -74,7 +74,7 @@ void OverwhelmedBroAlly::tick(double dt, BaseEntity &baseSelf, GameManager &game
 // % 走位
 void OverwhelmedBroAlly::updatePos(double dt, AllyInstance &self, const std::vector<EnemyInstance *> &enemies)
 {
-    if (m_teaSpout.timePassed >= 0)
+    if (m_teaSpout.elapsedTime >= 0)
         return;
 
     // 找到最近的敌人
@@ -157,7 +157,7 @@ void OverwhelmedBroAlly::updateBullets(double dt, AllyInstance &self, GameManage
         // 使用子弹图片代替圆形
         renderer.queueImage(":/texture/projectile/luxine.png",
                             b.x, b.y,
-                            b.rot, 0.7, Qt::AlignCenter, 100);
+                            b.rot, 0.5, Qt::AlignCenter, 100);
 
         bool hit = false;
         for (auto &enemy : enemies)
@@ -215,7 +215,7 @@ EnemyInstance *OverwhelmedBroAlly::findEnemy(const std::vector<EnemyInstance *> 
 // % 发射子弹
 void OverwhelmedBroAlly::fireBullet(const AllyInstance &self, EnemyInstance *target)
 {
-    Bullet b;
+    LuxineBullet b;
     b.x = self.transform.x;
     b.y = self.transform.y;
 
@@ -234,26 +234,26 @@ void OverwhelmedBroAlly::updateTropicalTeaSpout(double dt, AllyInstance &self, G
     m_currentCooldown = 1.0;
 
     double baseRotAngle = atan2(m_targetDirection.y(), m_targetDirection.x()) * 180.0 / M_PI;
-    m_teaSpout.timePassed += dt;
+    m_teaSpout.elapsedTime += dt;
     // 1. 蓄力一秒钟
-    if (m_teaSpout.timePassed <= 1.0) // 第一秒
+    if (m_teaSpout.elapsedTime <= 1.0) // 第一秒
     {
         gameManager.getRenderer().queueImage(":/texture/projectile/tropical_tea.png",
                                              self.transform.x + 50 * m_targetDirection.x(),
                                              self.transform.y + 50 * m_targetDirection.y(),
-                                             baseRotAngle + 10 * std::sin(8 * M_PI * m_teaSpout.timePassed), 0.5, Qt::AlignCenter, 100);
+                                             baseRotAngle + 10 * std::sin(8 * M_PI * m_teaSpout.elapsedTime), 0.5, Qt::AlignCenter, 100);
         return;
     }
 
-    else if (m_teaSpout.timePassed > 1.0 && m_teaSpout.hitCount < 7) // 进入喷射战士状态
+    else if (m_teaSpout.elapsedTime > 1.0 && m_teaSpout.hitCount < 7) // 进入喷射战士状态
     {
 
         gameManager.getRenderer().queueImage(":/texture/projectile/tropical_tea_spout.png",
                                              self.transform.x + 50 * m_targetDirection.x(),
                                              self.transform.y + 50 * m_targetDirection.y(),
-                                             baseRotAngle + 90 + 10 * std::sin(2 * M_PI * m_teaSpout.timePassed), 5.0, Qt::AlignCenter, 100);
+                                             baseRotAngle + 90 + 10 * std::sin(2 * M_PI * m_teaSpout.elapsedTime), 5.0, Qt::AlignCenter, 100);
 
-        if (m_teaSpout.timePassed - 1 > 0.5 * m_teaSpout.hitCount) // 3秒7喷
+        if (m_teaSpout.elapsedTime - 1 > 0.5 * m_teaSpout.hitCount) // 3秒7喷
         {
             ++m_teaSpout.hitCount;
             // 遍历所有敌人，对喷射范围内的敌人造成伤害
@@ -279,7 +279,7 @@ void OverwhelmedBroAlly::updateTropicalTeaSpout(double dt, AllyInstance &self, G
     }
     else
     {
-        m_teaSpout.timePassed = -1;
+        m_teaSpout.elapsedTime = -1;
         m_teaSpout.hitCount = 0;
     }
 }

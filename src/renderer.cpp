@@ -73,11 +73,12 @@ void Renderer::flush()
                            c->setData(0, -1);// 标记为临时项，自动删除
                            c->setZValue(item.z);
                        }
+                       // 渲染线
                        else if constexpr (std::is_same_v<T, LinePayload>)
                        {
                            auto *l = m_scene->addLine(
                                item.x, item.y,
-                               item.x + payload.x, item.y + payload.y,
+                               payload.x, payload.y,
                                payload.style.pen);
                            l->setData(0, -1);// 标记为临时项，自动删除
                        }

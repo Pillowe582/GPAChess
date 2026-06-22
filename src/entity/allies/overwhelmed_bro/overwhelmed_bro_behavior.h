@@ -14,23 +14,25 @@ public:
     void onStart(AllyInstance &self);
 
 private:
-    // ---- 此角色自有的子弹数据 ----
-    struct Bullet
+    // 泸溪河子弹结构体
+    struct LuxineBullet
     {
         double x = 0, y = 0;
         double vx = 0, vy = 0;
         double rot = 0;
         int damage = 0;
     };
+
+    // 热带风味结构体
     struct TropicalTeaSpout
     {
         double x = 0, y = 0;
         double rot = 0;
-        double timePassed = -1;
+        double elapsedTime = -1;
         int hitCount = 0;
         int damage = 0;
     };
-    std::vector<Bullet> m_bullets;
+    std::vector<LuxineBullet> m_bullets;
 
     TropicalTeaSpout m_teaSpout;
 

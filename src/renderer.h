@@ -9,6 +9,7 @@
 #include <vector>
 #include <QPixmap>
 #include <QMap>
+#include <QPen>
 
 // % 渲染通用数据定义
 

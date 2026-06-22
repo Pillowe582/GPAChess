@@ -313,7 +313,7 @@ void GameManager::onTick()
 void GameManager::clampToArena(BaseEntity &entity, double margin) const
 {
     entity.transform.x = std::clamp(entity.transform.x, margin, 1920.0 - margin);
-    entity.transform.y = std::clamp(entity.transform.y, margin, 800.0 + 140.0 - margin);
+    entity.transform.y = std::clamp(entity.transform.y, margin, 800.0 - margin);
 }
 
 // % 攻击循环
