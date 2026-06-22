@@ -73,6 +73,14 @@ void Renderer::flush()
                            c->setData(0, -1);// 标记为临时项，自动删除
                            c->setZValue(item.z);
                        }
+                       else if constexpr (std::is_same_v<T, LinePayload>)
+                       {
+                           auto *l = m_scene->addLine(
+                               item.x, item.y,
+                               item.x + payload.x, item.y + payload.y,
+                               payload.style.pen);
+                           l->setData(0, -1);// 标记为临时项，自动删除
+                       }
 
                        // 渲染矩形
                        else if constexpr (std::is_same_v<T, RectPayload>){
@@ -207,7 +215,16 @@ void Renderer::clearAll()
 }
 
 // % Queue 接口
-
+void Renderer::queueLine(double x1, double y1, double x2, double y2,
+                         const QPen &pen, int z)
+{
+    QueueItem q;
+    q.x = x1;
+    q.y = y1;
+    q.z = z;
+    q.data = LinePayload{x2, y2, pen};
+    m_queue.push_back(q);
+}
 void Renderer::queueImage(const QString &path, double x, double y,
                           double rotation, double scale,
                           Qt::Alignment align, int z)

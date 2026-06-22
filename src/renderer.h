@@ -44,7 +44,32 @@ struct TextStyle
     }
 };
 
+struct LineStyle
+{
+    QPen pen;
+    LineStyle &setPen(const QPen &p)
+    {
+        pen = p;
+        return *this;
+    }
+    LineStyle &setColor(const QColor &c)
+    {
+        pen.setColor(c);
+        return *this;
+    }
+    LineStyle &setWidth(qreal w)
+    {
+        pen.setWidthF(w);
+        return *this;
+    }
+};
+
 // % 各种Payload定义
+struct LinePayload
+{
+    double x, y;
+    LineStyle style;
+};
 struct TextPayload
 {
     QString text;
@@ -86,7 +111,8 @@ struct QueueItem
 {
     double x = 0, y = 0;
     int z = 100;
-    std::variant<TextPayload,
+    std::variant<LinePayload,
+                 TextPayload,
                  ImagePayload,
                  CirclePayload,
                  RectPayload,
@@ -108,7 +134,17 @@ public:
     void flush();      // 一次性渲染队列中所有内容
     void clearAll();   // 清空队列 + 清除临时项（回合结束时调用）
 
-    // ========== Queue 接口（纯原语，不包含实体逻辑）==========
+    // % Queue 接口
+
+    /// @brief  将线段绘制请求加入队列
+    /// @param x1 起始X坐标
+    /// @param y1 起始Y坐标
+    /// @param x2 终点X坐标
+    /// @param y2 终点Y坐标
+    /// @param pen 笔刷
+    /// @param z Z值
+    void queueLine(double x1, double y1, double x2, double y2,
+                   const QPen &pen, int z = 100);
 
     /// @brief 将图片绘制请求加入队列
     /// @param path 图片路径

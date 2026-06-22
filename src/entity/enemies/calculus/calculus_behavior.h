@@ -28,6 +28,28 @@ private:
     QVector2D m_targetVec; // 当前攻击目标向量
     Weapon m_weapon;
     double m_cooldown = 0.0;
+
+    /// 处理武器挥砍动画、碰撞检测和渲染
+    void updateInteger(double dt,
+                       const std::vector<std::unique_ptr<AllyInstance>> &allies,
+                       Renderer &renderer,
+                       EnemyInstance &self);
+
+    /// 找最近的我方单位（优先排除塔），返回 nullptr 表示无目标
+    AllyInstance *findClosestAlly(const std::vector<std::unique_ptr<AllyInstance>> &allies,
+                                  const EnemyInstance &self);
+
+    /// @brief 寻找最近的上下界目标（infX < x < supX）
+    /// @param allies 我方单位列表
+    /// @param self 敌人自身
+    /// @param infX 最靠左的单位的x回调
+    /// @param supX 最靠右的单位的x回调
+    void findInfSupAlly(const std::vector<std::unique_ptr<AllyInstance>> &allies,
+                        const EnemyInstance &self,
+                        double &infX, double &supX);
+
+    /// 向目标移动（远距离靠近，近距离后退）
+    void updatePos(double dt, EnemyInstance &self, AllyInstance *target);
 };
 
 #endif

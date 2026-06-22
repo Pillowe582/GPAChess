@@ -4,63 +4,113 @@
 #include "game_manager.h"
 #include <cmath>
 #include <QRandomGenerator>
+// % 开始时
+void CalculusEnemy::onStart(EnemyInstance &self)
+{
+    // 战斗开始时重置武器状态，避免残留上一回合的挥砍动画
+    m_weapon.active = false;
+    m_weapon.angle = 0.0;
+    m_weapon.elapsed = 0.0;
+    m_weapon.rotSpeed = -0.5f;
+    m_weapon.rotationsDone = 0;
+    m_weapon.targetUuid = -1;
 
+    // 设置初始冷却时间，避免立即发动攻击
+    int spd = self.baseAttackSpeed;
+    m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
+}
+
+// % 每刻调用
 void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManager)
 {
     EnemyInstance &self = static_cast<EnemyInstance &>(baseSelf);
-    auto &allies = gameManager.getPlayerAssets().ownedChesses;
+    const auto &allies = gameManager.getPlayerAssets().ownedChesses;
     Renderer &renderer = gameManager.getRenderer();
 
     // ====== 近战逻辑 ======
     m_cooldown = std::max(0.0, m_cooldown - dt);
 
-    // % 武器挥砍
+    // 1. 武器挥砍动画（优先）
     if (m_weapon.active)
     {
-
-        m_weapon.elapsed += dt;
-        m_weapon.angle += (m_weapon.rotSpeed * 3.14159265) * dt / 0.2;
-        m_weapon.rotSpeed += 1.5 * m_weapon.rotSpeed * dt; // 加速旋转
-
-        int currentRot = -1 * static_cast<int>(m_weapon.angle / (2.0 * 3.14159265));
-        if (currentRot > m_weapon.rotationsDone)
-        {
-            self.currentMp += 10;
-            m_weapon.rotationsDone = currentRot;
-            for (auto &ally : allies)
-            {
-                if (!ally->isAlive || !ally->deployed)
-                    continue;
-                double dx = ally->transform.x - self.transform.x;
-                double dy = ally->transform.y - self.transform.y;
-                if (std::sqrt(dx * dx + dy * dy) < 200.0)
-                {
-                    int dmg = self.atk.getFinal();
-                    ally->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00ffc3")});
-                }
-            }
-        }
-
-        if (m_weapon.rotationsDone >= 5)
-        {
-            m_weapon.rotSpeed = -0.5f; // 重置旋转速度
-            m_weapon.active = false;
-            int spd = self.baseAttackSpeed;
-            m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
-        }
-
-        // 渲染：旋转的环路积分图片
-        double rotationDeg = m_weapon.angle * 180.0 / 3.14159265;
-        renderer.queueImage(":/texture/projectile/oint.png",
-                            self.transform.x + 50 * m_targetVec.normalized().x(), self.transform.y + 50 * m_targetVec.normalized().y(),
-                            rotationDeg, 2.0, Qt::AlignCenter, 90);
+        updateInteger(dt, allies, renderer, self);
         return;
     }
 
     if (m_cooldown > 0.0)
         return;
 
-    // ---- 找最近我方单位（排除塔）----
+    // 2. 寻找目标
+    AllyInstance *target = findClosestAlly(allies, self);
+    if (!target)
+        return;
+
+    // 3. 移动
+    updatePos(dt, self, target);
+
+    // 4. 近距离触发攻击
+    double dx = target->transform.x - self.transform.x;
+    double dy = target->transform.y - self.transform.y;
+    double dist = std::sqrt(dx * dx + dy * dy);
+    if (dist < 100.0)
+    {
+        m_weapon.active = true;
+        m_weapon.angle = 0.0;
+        m_weapon.elapsed = 0.0;
+        m_weapon.rotationsDone = 0;
+        m_targetVec = QVector2D(dx, dy);
+        m_weapon.targetUuid = target->getUuid();
+    }
+}
+
+// % 刷新环路圣剑
+void CalculusEnemy::updateInteger(double dt,
+                                  const std::vector<std::unique_ptr<AllyInstance>> &allies,
+                                  Renderer &renderer,
+                                  EnemyInstance &self)
+{
+    m_weapon.elapsed += dt;
+    m_weapon.angle += (m_weapon.rotSpeed * 3.14159265) * dt / 0.2;
+    m_weapon.rotSpeed += 1.5 * m_weapon.rotSpeed * dt; // 加速旋转
+
+    int currentRot = -1 * static_cast<int>(m_weapon.angle / (2.0 * 3.14159265));
+    if (currentRot > m_weapon.rotationsDone)
+    {
+        self.currentMp += 10;
+        m_weapon.rotationsDone = currentRot;
+        for (auto &ally : allies)
+        {
+            if (!ally->isAlive || !ally->deployed)
+                continue;
+            double dx = ally->transform.x - self.transform.x;
+            double dy = ally->transform.y - self.transform.y;
+            if (std::sqrt(dx * dx + dy * dy) < 200.0)
+            {
+                int dmg = self.atk.getFinal();
+                ally->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00ffc3")});
+            }
+        }
+    }
+
+    if (m_weapon.rotationsDone >= 5)
+    {
+        m_weapon.rotSpeed = -0.5f; // 重置旋转速度
+        m_weapon.active = false;
+        int spd = self.baseAttackSpeed;
+        m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
+    }
+
+    // 渲染：旋转的环路积分图片
+    double rotationDeg = m_weapon.angle * 180.0 / 3.14159265;
+    renderer.queueImage(":/texture/projectile/oint.png",
+                        self.transform.x + 50 * m_targetVec.normalized().x(), self.transform.y + 50 * m_targetVec.normalized().y(),
+                        rotationDeg, 2.0, Qt::AlignCenter, 90);
+}
+
+// % 寻找最近目标
+AllyInstance *CalculusEnemy::findClosestAlly(const std::vector<std::unique_ptr<AllyInstance>> &allies,
+                                             const EnemyInstance &self)
+{
     AllyInstance *target = nullptr;
     double bestDist = 1e18;
     for (auto &ally : allies)
@@ -70,7 +120,7 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
             continue;
         double dx = ally->transform.x - self.transform.x;
         double dy = ally->transform.y - self.transform.y;
-        double d = dx * dx + dy * dy;
+        double d = dx * dx + dy * dy; // 用平方比较，避免开方
         if (d < bestDist)
         {
             bestDist = d;
@@ -97,10 +147,31 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
             }
         }
     }
+    return target;
+}
 
-    if (!target)
-        return;
+// % 寻找上下界目标
 
+void CalculusEnemy::findInfSupAlly(const std::vector<std::unique_ptr<AllyInstance>> &allies,
+                                   const EnemyInstance &self,
+                                   double &infX, double &supX)
+{
+
+    infX = self.transform.x;
+    supX = infX;
+    for (auto &ally : allies)
+    {
+        double x = ally->transform.x;
+        if (x < infX)
+            infX = x;
+        if (x > supX)
+            supX = x;
+    }
+}
+
+// % 走位
+void CalculusEnemy::updatePos(double dt, EnemyInstance &self, AllyInstance *target)
+{
     double dx = target->transform.x - self.transform.x;
     double dy = target->transform.y - self.transform.y;
     double dist = std::sqrt(dx * dx + dy * dy);
@@ -118,28 +189,4 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
         self.transform.x -= dx / dist * spd;
         self.transform.y -= dy / dist * spd;
     }
-
-    if (dist < 100.0)
-    {
-        m_weapon.active = true;
-        m_weapon.angle = 0.0;
-        m_weapon.elapsed = 0.0;
-        m_weapon.rotationsDone = 0;
-        m_weapon.targetUuid = target->getUuid();
-    }
-}
-
-void CalculusEnemy::onStart(EnemyInstance &self)
-{
-    // 战斗开始时重置武器状态，避免残留上一回合的挥砍动画
-    m_weapon.active = false;
-    m_weapon.angle = 0.0;
-    m_weapon.elapsed = 0.0;
-    m_weapon.rotSpeed = -0.5f;
-    m_weapon.rotationsDone = 0;
-    m_weapon.targetUuid = -1;
-
-    // 设置初始冷却时间，避免立即发动攻击
-    int spd = self.baseAttackSpeed;
-    m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
 }
