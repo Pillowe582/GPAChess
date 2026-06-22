@@ -139,6 +139,50 @@ public:
     /// 已完成回合的学分之和
     int getPreviousCredits() const { return m_totalCredits; }
 
+    // % 等级计算：从第 n 级升到 n+1 级需要 10 * log2(n+2) 经验
+    static int expForLevel(int level)
+    {
+        if (level < 0) level = 0;
+        return static_cast<int>(10.0 * std::log2(level + 2.0));
+    }
+
+    /// 根据累计 exp 计算当前等级
+    static int levelFromExp(int exp)
+    {
+        int lv = 0;
+        while (true)
+        {
+            int needed = expForLevel(lv);
+            if (exp < needed)
+                break;
+            exp -= needed;
+            ++lv;
+        }
+        return lv;
+    }
+
+    /// 当前等级下的经验进度（当前等级已获得的经验）
+    static int expInCurrentLevel(int totalExp)
+    {
+        int lv = 0;
+        while (true)
+        {
+            int needed = expForLevel(lv);
+            if (totalExp < needed)
+                break;
+            totalExp -= needed;
+            ++lv;
+        }
+        return totalExp;
+    }
+
+    /// 当前等级升到下一级所需的总经验
+    static int expNeededForNextLevel(int totalExp)
+    {
+        int lv = levelFromExp(totalExp);
+        return expForLevel(lv);
+    }
+
 signals:
     // 每次 tick 发出，用于驱动 UI 刷新
     void tick();

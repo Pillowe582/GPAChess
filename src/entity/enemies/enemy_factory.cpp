@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-/// 敌人渲染：使用纹理图片 + 血条 + 名字/HP
+/// 敌人渲染：使用纹理图片 + 血条 + HP文字 + MP条
 void EnemyBehavior::renderSelf(const EnemyInstance &self, Renderer &renderer,
                                double x, double y)
 {
@@ -27,11 +27,20 @@ void EnemyBehavior::renderSelf(const EnemyInstance &self, Renderer &renderer,
     double hpRatio = maxHp > 0 ? std::clamp(static_cast<double>(self.currentHp) / maxHp, 0.0, 1.0) : 0.0;
     renderer.queueRect(barX, barY, barW * hpRatio, barH, QColor("#DC3C3C"), 21);
 
+    // MP 条（紧贴血条下方 2px，黄色）
+    double mpBarH = 4.0;
+    double mpBarY = barY + barH + 2.0;
+    int maxMp = self.maxMp > 0 ? self.maxMp : 1; // 至少为1避免除以0
+    double mpRatio = std::clamp(static_cast<double>(self.currentMp) / maxMp, 0.0, 1.0);
+    renderer.queueRect(barX, mpBarY, barW, mpBarH, QColor("#7b7b7b"), 20);
+    renderer.queueRect(barX, mpBarY, barW * mpRatio, mpBarH, QColor("#FFD700"), 21);
+
+    double textY = mpBarY + mpBarH + 4.0;
     TextStyle textStyle;
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX, barY + barH + 4.0, textStyle.setColor(QColor("#000000") ^ 0.7), 29);
+                       barX, textY, textStyle.setColor(QColor("#000000") ^ 0.7), 29);
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX - 2.0, barY + barH + 2.0, textStyle.setColor(QColor("#ffc6c6")), 30);
+                       barX - 2.0, textY - 2.0, textStyle.setColor(QColor("#ffc6c6")), 30);
 }
 
 EnemyBehavior *createEnemyBehavior(int behaviorId)

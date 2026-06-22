@@ -188,6 +188,7 @@ public:
     Attribute atk;
     bool isRequired = false;
     int currentTargetId = -1;
+    int currentMp = 0;
 
     std::unique_ptr<EnemyBehavior> behavior;
 };

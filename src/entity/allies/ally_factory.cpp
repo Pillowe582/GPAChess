@@ -34,11 +34,20 @@ void AllyBehavior::renderSelf(const AllyInstance &self, Renderer &renderer,
     renderer.queueRect(barX, barY, barW, barH, QColor("#7b7b7b"), 20);
     renderer.queueRect(barX, barY, barW * hpRatio, barH, QColor("#32CD32"), 21);
 
+    // MP 条（紧贴血条下方 2px，黄色）
+    double mpBarH = 4.0;
+    double mpBarY = barY + barH + 2.0;
+    int maxMp = self.maxMp > 0 ? self.maxMp : 1; // 至少为1避免除以0
+    double mpRatio = std::clamp(static_cast<double>(self.currentMp) / maxMp, 0.0, 1.0);
+    renderer.queueRect(barX, mpBarY, barW, mpBarH, QColor("#7b7b7b"), 20);
+    renderer.queueRect(barX, mpBarY, barW * mpRatio, mpBarH, QColor("#FFD700"), 21);
+
+    double textY = mpBarY + mpBarH + 4.0;
     TextStyle textStyle;
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX, barY + barH + 4.0, textStyle.setBold(1).setColor(QColor("#000000") ^ 0.7), 29);
+                       barX, textY, textStyle.setBold(1).setColor(QColor("#000000") ^ 0.7), 29);
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX - 2.0, barY + barH + 2.0, textStyle.setBold(1).setColor(QColor("#c2ffc9")), 30);
+                       barX - 2.0, textY - 2.0, textStyle.setBold(1).setColor(QColor("#c2ffc9")), 30);
 }
 
 /// @brief 由QPainter自动调用渲染，只用于在准备阶段绘制

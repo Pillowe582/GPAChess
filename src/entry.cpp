@@ -380,6 +380,21 @@ void MainWindow::refreshSceneLabels()
         lbl->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
     if (auto *lbl = findChild<QLabel *>("goldCount"))
         lbl->setText(QString("金币：%1").arg(assets.gold));
+
+    // 等级与经验值
+    int totalExp = assets.exp;
+    int lv = GameManager::levelFromExp(totalExp);
+    int expInLv = GameManager::expInCurrentLevel(totalExp);
+    int expNeeded = GameManager::expNeededForNextLevel(totalExp);
+
+    if (auto *lbl = findChild<QLabel *>("lvLabel"))
+        lbl->setText(QString("Lv.%1").arg(lv));
+    if (auto *bar = findChild<QProgressBar *>("expProgress"))
+    {
+        bar->setMaximum(expNeeded > 0 ? expNeeded : 1);
+        bar->setValue(expInLv);
+        bar->setFormat(QString("%1 / %2").arg(expInLv).arg(expNeeded));
+    }
 }
 
 // ============================================================================
