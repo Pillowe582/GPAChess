@@ -87,9 +87,12 @@ public:
         m_pendingExp += exp;
     }
 
+    QTimer *getTickTimer() const { return m_tickTimer; }
     quint32 gameSeed() const { return m_gameSeed; }
 
     // % 工具方法
+    /// 限制实体位置在画布内（保留 margin 边距）
+    void clampToArena(BaseEntity &entity, double margin = 20.0) const;
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
 
@@ -139,10 +142,11 @@ public:
     /// 已完成回合的学分之和
     int getPreviousCredits() const { return m_totalCredits; }
 
-    // % 等级计算：从第 n 级升到 n+1 级需要 10 * log2(n+2) 经验
+    // 等级计算：从第 n 级升到 n+1 级需要 10 * log2(n+2) 经验
     static int expForLevel(int level)
     {
-        if (level < 0) level = 0;
+        if (level < 0)
+            level = 0;
         return static_cast<int>(10.0 * std::log2(level + 2.0));
     }
 

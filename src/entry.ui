@@ -320,7 +320,7 @@
              </sizepolicy>
             </property>
             <property name="text">
-             <string>打开商店</string>
+             <string>商店</string>
             </property>
            </widget>
           </item>

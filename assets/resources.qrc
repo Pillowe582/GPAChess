@@ -8,6 +8,7 @@
         <file>texture/entity/enemyB.png</file>
         <file>texture/entity/Calculus.png</file>
         <file>texture/entity/OverwhelmedBro.png</file>
+        <file>texture/entity/Physics.png</file>
         <file>texture/entity/tower.png</file>
 
         <!-- Projectile textures -->
@@ -15,6 +16,8 @@
         <file>texture/projectile/diamond_sword.png</file>
         <file>texture/projectile/oint.png</file>
         <file>texture/projectile/tropical_tea.png</file>
+        <file>texture/projectile/tropical_tea_spout.png</file>
+        <file>texture/projectile/luxine.png</file>
 
         <!-- Battleground textures -->
         <file>texture/battleground/sand.png</file>

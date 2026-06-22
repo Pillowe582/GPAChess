@@ -1,6 +1,7 @@
 #ifndef OVERWHHELMED_BRO_ALLY_H
 #define OVERWHHELMED_BRO_ALLY_H
 #include "entity/ally_behavior.h"
+#include <QVector2D>
 
 class GameManager;
 
@@ -21,25 +22,49 @@ private:
         double rot = 0;
         int damage = 0;
     };
+    struct TropicalTeaSpout
+    {
+        double x = 0, y = 0;
+        double rot = 0;
+        double timePassed = -1;
+        int hitCount = 0;
+        int damage = 0;
+    };
     std::vector<Bullet> m_bullets;
+
+    TropicalTeaSpout m_teaSpout;
+
     double m_maxCooldown = 1.5; // 发射冷却
     double m_currentCooldown = 0.0;
 
-    // ---- 拆分的子方法 ----
+    QVector2D m_targetDirection; // 指向目标的向量，用于子弹发射方向
 
-    /// 推进并渲染已有子弹，检测碰撞，移除失效子弹
-    void updateBullets(double dt,
-                       std::vector<EnemyInstance *> &enemies,
-                       Renderer &renderer,
-                       AllyInstance &self,
-                       GameManager &gameManager);
+    void updatePos(double dt, AllyInstance &self, const std::vector<EnemyInstance *> &enemies);
 
-    /// 找最远的存活敌人，返回 nullptr 表示没找到
-    EnemyInstance *findFarthestEnemy(const std::vector<EnemyInstance *> &enemies,
-                                     const AllyInstance &self);
+    // % 索敌方法
+
+    /// @brief 索敌
+    /// @note 使用曼哈顿距离
+    /// @param enemies 所有敌人向量
+    /// @param self 自身实例
+    /// @param bestDist 最佳距离，最远时传入-1，最远时传入114514
+    /// @return 返回找到的敌人指针，若无则返回 nullptr
+    EnemyInstance *findEnemy(const std::vector<EnemyInstance *> &enemies,
+                             const AllyInstance &self, int bestDist = -1);
+
+    // % 发射泸溪河技能
+
+    /// @brief 子弹推进、渲染、碰撞检测
+    /// @param dt 经过的时间
+    /// @param self 自身实例
+    /// @param gameManager 游戏管理器
+    void updateBullets(double dt, AllyInstance &self, GameManager &gameManager);
 
     /// 向目标发射一颗子弹，存入 m_bullets
     void fireBullet(const AllyInstance &self, EnemyInstance *target);
+
+    // % 热带风味喷射战士技能
+    void updateTropicalTeaSpout(double dt, AllyInstance &self, GameManager &gameManager);
 };
 
 #endif

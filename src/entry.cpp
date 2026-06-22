@@ -28,6 +28,7 @@
 #include <QList>
 #include <QTimer>
 #include <QVariantAnimation>
+#include <QKeyEvent>
 #include <algorithm>
 #include <cmath>
 /// 本文件专门处理UI初始化与UI逻辑交互
@@ -130,6 +131,32 @@ MainWindow::~MainWindow()
 {
     print("Mainba out");
     delete ui;
+}
+
+// ============================================================================
+// % 暂停功能
+// ============================================================================
+void MainWindow::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_Escape && m_gameManager)
+    {
+        // 暂停计时器
+        m_gameManager->getTickTimer()->stop();
+
+        // 弹出模态暂停对话框
+        QMessageBox pauseBox(this);
+        pauseBox.setWindowTitle(QStringLiteral("游戏暂停"));
+        pauseBox.setText(QStringLiteral("游戏已暂停"));
+        pauseBox.setInformativeText(QStringLiteral("点击确定继续游戏"));
+        pauseBox.setStandardButtons(QMessageBox::Ok);
+        pauseBox.setIcon(QMessageBox::Information);
+        pauseBox.exec();
+
+        // 恢复计时器
+        m_gameManager->getTickTimer()->start();
+        return;
+    }
+    QMainWindow::keyPressEvent(event);
 }
 
 // ============================================================================

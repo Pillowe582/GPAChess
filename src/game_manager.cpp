@@ -12,6 +12,7 @@
 #include <cmath>
 #include <QRandomGenerator>
 #include <QCoreApplication>
+#include <QtGlobal>
 
 GameManager::GameManager(QObject *parent)
     : QObject(parent), m_tickTimer(new QTimer(this)),
@@ -54,7 +55,7 @@ void GameManager::initialize()
     generateRoundInfos(m_roundInfos, m_maxRounds);
 
     // 重置玩家资源
-    m_player.gold = 100;
+    m_player.gold = 10;
     m_player.exp = 0;
     m_player.ownedChesses.clear();
 
@@ -138,7 +139,7 @@ void GameManager::startRound(int roundNumber)
 {
     m_roundNumber = roundNumber;
 
-    m_tower->baseDef = roundNumber * 200; // 塔防御随回合增加
+    m_tower->baseDef = roundNumber * 300; // 塔防御随回合增加
     // 快照回合开始时的金币/经验
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
@@ -294,7 +295,7 @@ void GameManager::onTick()
     // delta in seconds
     double delta = GAME_TICK_INTERVAL_MS / 1000.0;
     m_timeAccumulator += delta;
-    tickBehaviors(delta);
+    tickBehaviors(delta); // 乘个数就可以实现倍速逻辑
     emit tick();
 
     bool victory = false;
@@ -304,6 +305,15 @@ void GameManager::onTick()
         transitionPhase(RoundPhase::ShowResult);
         emit roundEnded(victory);
     }
+}
+
+// % 边界限制
+
+/// @brief 将实体位置限制在画布范围（保留 margin 边距）
+void GameManager::clampToArena(BaseEntity &entity, double margin) const
+{
+    entity.transform.x = std::clamp(entity.transform.x, margin, 1920.0 - margin);
+    entity.transform.y = std::clamp(entity.transform.y, margin, 800.0 + 140.0 - margin);
 }
 
 // % 攻击循环
@@ -325,6 +335,14 @@ void GameManager::tickBehaviors(double deltaSeconds)
     for (auto &enemy : m_gameEntities.enemies)
         if (enemy->isAlive && enemy->behavior)
             enemy->behavior->tick(deltaSeconds, *enemy, *this);
+
+    // 边界限制：所有存活且已部署的单位
+    for (auto &ally : m_player.ownedChesses)
+        if (ally->isAlive && ally->deployed)
+            clampToArena(*ally);
+    for (auto &enemy : m_gameEntities.enemies)
+        if (enemy->isAlive)
+            clampToArena(*enemy);
 
     // ═══════ 渲染 Phase ═══════
     m_renderer->beginFrame();

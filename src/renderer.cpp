@@ -110,22 +110,26 @@ void Renderer::flush()
                            double scale = payload.scale; // scale
                            double w = 128 * scale;
                            double h = 128 * scale;
+                           // 创建 pixmap item（使用 FastTransformation 保持像素边缘清晰）
+                           auto scaledPix = pix.scaled(w, h, Qt::KeepAspectRatio, Qt::FastTransformation);
+
+                           double actualW = scaledPix.width();
+                            double actualH = scaledPix.height();
 
                            double px = item.x, py = item.y;
                            if (payload.align & Qt::AlignHCenter)
-                               px -= w / 2.0;
+                               px -= actualW / 2.0;
                            if (payload.align & Qt::AlignVCenter)
-                               py -= h / 2.0;
+                               py -= actualH / 2.0;
 
-                           // 创建 pixmap item（使用 FastTransformation 保持像素边缘清晰）
-                           auto scaledPix = pix.scaled(w, h, Qt::KeepAspectRatio, Qt::FastTransformation);
+                           
                            auto *img = m_scene->addPixmap(scaledPix);
                            img->setPos(px, py);
 
                            // 支持旋转
                            if (payload.rotation != 0.0)
                            {
-                               img->setTransformOriginPoint(w / 2.0, h / 2.0);
+                               img->setTransformOriginPoint(actualW / 2.0, actualH / 2.0);
                                img->setRotation(payload.rotation);
                            }
 

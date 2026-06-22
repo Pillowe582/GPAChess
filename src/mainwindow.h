@@ -6,6 +6,7 @@
 #include <QString>
 #include <QMap>
 #include <QPointF>
+#include <QKeyEvent>
 
 class QGraphicsScene;
 class QGraphicsSimpleTextItem;
@@ -57,6 +58,7 @@ private slots:
 
 private:
     Ui::MainWindow *ui;
+    void keyPressEvent(QKeyEvent *event) override;
     void initUi();
     void initGame();
     void setupGameScene();
