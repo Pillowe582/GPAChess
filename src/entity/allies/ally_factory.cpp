@@ -34,10 +34,11 @@ void AllyBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
     renderer.queueRect(barX, barY, barW, barH, QColor("#7b7b7b"), 20);
     renderer.queueRect(barX, barY, barW * hpRatio, barH, QColor("#32CD32"), 21);
 
+    TextStyle textStyle;
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX, barY + barH + 4.0, QColor(0, 0, 0, 160), 29);
+                       barX, barY + barH + 4.0, textStyle.setBold(1).setColor(QColor("#000000") ^ 0.7), 29);
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX - 2.0, barY + barH + 2.0, Qt::white, 30);
+                       barX - 2.0, barY + barH + 2.0, textStyle.setBold(1).setColor(QColor("#c2ffc9")), 30);
 }
 
 /// @brief 由QPainter自动调用渲染，只用于在准备阶段绘制

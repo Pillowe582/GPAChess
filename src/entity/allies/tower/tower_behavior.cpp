@@ -8,7 +8,14 @@
 #include <QPen>
 #include <QFont>
 
-// ========== 逻辑 tick ==========
+// % 回合开始
+void TowerBehavior::onStart(ChessInstance &self)
+{
+    // 战斗开始时设置初始攻击冷却，避免塔立即开火
+    m_currentAttackCooldown = m_maxAttackCooldown; // 塔的攻击间隔为1.5秒
+}
+
+//% 每逻辑Tick
 void TowerBehavior::tick(double dt,
                          ChessInstance &self,
                          std::vector<EnemyInstance> &enemies,
@@ -16,12 +23,20 @@ void TowerBehavior::tick(double dt,
                          int &pendingGold,
                          int &pendingExp)
 {
-    auto rng = QRandomGenerator::global();
-    auto jitter = [rng]() -> double
-    { return (rng->generateDouble() - 0.5) * 30.0; };
 
-    m_attackCooldown = std::max(0.0, m_attackCooldown - dt);
-    if (m_attackCooldown > 0.0)
+    m_hpRatio = self.maxHp.getFinal() > 0
+                    ? self.currentHp / self.maxHp.getFinal()
+                    : 1.0;
+    attack(dt, self, enemies, pendingGold, pendingExp); // 执行攻击逻辑
+}
+
+// % 攻击逻辑
+void TowerBehavior::attack(double dt, ChessInstance &self, std::vector<EnemyInstance> &enemies, int &pendingGold, int &pendingExp)
+{
+    auto rng = QRandomGenerator::global();
+
+    m_currentAttackCooldown = std::max(0.0, m_currentAttackCooldown - dt);
+    if (m_currentAttackCooldown > 0.0)
         return;
 
     // 找第一个存活敌人
@@ -31,12 +46,8 @@ void TowerBehavior::tick(double dt,
     if (it == enemies.end())
         return;
 
-    // 伤害 = 敌人血量上限 × (1 + (1 - HP%) × 2)
-    double hpRatio = self.maxHp.getFinal() > 0
-                         ? self.currentHp / self.maxHp.getFinal()
-                         : 1.0;
-
-    int dmg = static_cast<int>(it->maxHp.getFinal() * (0.01 + (1.0 - hpRatio) * 2.0));
+    // 伤害计算
+    int dmg = static_cast<int>(it->maxHp.getFinal() * (0.01 + (1.0 - m_hpRatio) * 2.0));
 
     it->dealDamage(dmg, self, DamageType{DamageType::True, QColor("#46a6ff")});
 
@@ -47,10 +58,10 @@ void TowerBehavior::tick(double dt,
         pendingExp += it->baseExpReward;
     }
 
-    m_attackCooldown = 1.5;
+    m_currentAttackCooldown = m_maxAttackCooldown;
 }
 
-// ========== Queue 渲染 ==========
+// % Queue 渲染
 void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
                                double x, double y)
 {
@@ -58,30 +69,15 @@ void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
     QString texturePath = ":/texture/entity/tower.png";
     renderer.queueImage(texturePath, tx + ts / 2.0, ty + ts / 2.0, 0.0, 1.0, Qt::AlignCenter, 10);
 
-    double hpRatio = self.maxHp.getFinal() > 0
-                         ? std::clamp(self.currentHp / self.maxHp.getFinal(), 0.0, 1.0)
-                         : 0.0;
-    QColor hpC = hpRatio > 0.5    ? QColor(80, 180, 255)
-                 : hpRatio > 0.25 ? QColor(255, 200, 60)
-                                  : QColor(255, 70, 70);
-    renderer.queueRect(tx, ty - 12.0, ts * hpRatio, 6.0, hpC, 7);
+    // 根据血量比例选择颜色
+    QColor hpC = m_hpRatio > 0.5    ? QColor(80, 180, 255)
+                 : m_hpRatio > 0.25 ? QColor(255, 200, 60)
+                                    : QColor(255, 70, 70);
+    renderer.queueRect(tx, ty - 12.0, ts * m_hpRatio, 6.0, hpC, 7);
 
-    double gpa = hpRatio * 4.0;
+    // 绘制 GPA 数字
+    double gpa = m_hpRatio * 4.0;
     renderer.queueText(QString::number(gpa, 'f', 1),
-                       tx + ts / 2.0 - 10.0, ty + ts / 2.0 - 10.0,
-                       Qt::black, 100);
-}
-
-// ========== Paint 渲染 ==========
-void TowerBehavior::renderSelf(const ChessInstance &self, QPainter &p,
-                               double radius)
-{
-    return; // 塔不使用 Paint 渲染
-}
-
-// ========== 回合开始 ==========
-void TowerBehavior::onStart(ChessInstance &self)
-{
-    // 战斗开始时设置初始攻击冷却，避免塔立即开火
-    m_attackCooldown = 1.5; // 塔的攻击间隔为1.5秒
+                       tx + ts / 2.0 - 30.0, ty + ts / 2.0 - 30.0,
+                       TextStyle().setFontSize(20).setBold(true).setColor(QColor("#46a6ff")), 20);
 }

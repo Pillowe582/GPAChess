@@ -19,10 +19,20 @@ public:
     void renderSelf(const ChessInstance &self, Renderer &r,
                     double x, double y) override;
     void renderSelf(const ChessInstance &self, QPainter &p,
-                    double radius) override;
+                    double radius) override {};
 
 private:
-    double m_attackCooldown = 0.0;
+    double m_maxAttackCooldown = 1.5; // 塔的攻击间隔为1.5秒
+    double m_currentAttackCooldown = 0.0;
+    double m_hpRatio = 1.0;
+
+    /// @brief 执行一次攻击逻辑
+    /// @param self 自身
+    /// @param enemies 敌人列表
+    /// @param pendingGold 待发放金币（回传）
+    /// @param pendingExp 待发放经验值（回传）
+    void attack(double dt, ChessInstance &self, std::vector<EnemyInstance> &enemies,
+                int &pendingGold, int &pendingExp);
 };
 
 #endif

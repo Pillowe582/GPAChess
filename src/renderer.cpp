@@ -59,139 +59,140 @@ void Renderer::beginFrame()
 // % 提交绘制
 void Renderer::flush()
 {
-    for (const auto &q : m_queue)
+    for (const auto &item : m_queue)
     {
-        switch (q.kind)
-        {
-        case QueueKind::Circle:
-        {
-            double r = q.param1;
-            auto *c = m_scene->addEllipse(
-                q.x - r, q.y - r, r * 2.0, r * 2.0,
-                QPen(Qt::NoPen), QBrush(q.color));
-            c->setData(0, -1);
-            c->setZValue(q.zValue);
-            break;
-        }
-        case QueueKind::Rect:
-        {
-            double w = q.param1, h = q.param2;
-            double px = q.x, py = q.y;
-            if (q.centered)
-            {
-                px -= w / 2.0;
-                py -= h / 2.0;
-            }
+        std::visit([this, &item](auto &&payload)
+                   {
+                       using T = std::decay_t<decltype(payload)>;
+                       // 渲染圆形
+                       if constexpr (std::is_same_v<T, CirclePayload>)
+                       {
+                           auto *c = m_scene->addEllipse(
+                               item.x - payload.radius, item.y - payload.radius,
+                               payload.radius * 2.0, payload.radius * 2.0,
+                               QPen(Qt::NoPen), QBrush(payload.color));
+                           c->setData(0, -1);// 标记为临时项，自动删除
+                           c->setZValue(item.z);
+                       }
 
-            auto *r = m_scene->addRect(
-                QRectF(px, py, w, h),
-                QPen(Qt::NoPen), QBrush(q.color));
-            if (q.rotation != 0.0)
-            {
-                r->setTransformOriginPoint(q.x, q.y);
-                r->setRotation(q.rotation);
-            }
-            r->setData(0, -1);
-            r->setZValue(q.zValue);
-            break;
-        }
-        case QueueKind::Image:
-        {
-            // 加载图片
-            QPixmap pix = loadImage(q.text);
-            if (pix.isNull())
-            {
-                break; // 加载失败，跳过
-            }
+                       // 渲染矩形
+                       else if constexpr (std::is_same_v<T, RectPayload>){
 
-            double scale = q.param1; // scale
-            double w = 128 * scale;
-            double h = 128 * scale;
+                           double w = payload.width, h = payload.height;
+                           double px = item.x, py = item.y;
+                           if (payload.centered)
+                           {
+                               px -= w / 2.0;
+                               py -= h / 2.0;
+                           }
 
-            double px = q.x, py = q.y;
-            if (q.alignment & Qt::AlignHCenter)
-                px -= w / 2.0;
-            if (q.alignment & Qt::AlignVCenter)
-                py -= h / 2.0;
+                           auto *r = m_scene->addRect(
+                               QRectF(px, py, w, h),
+                               QPen(Qt::NoPen), QBrush(payload.color));
+                           if (payload.rotation != 0.0)
+                           {
+                               r->setTransformOriginPoint(item.x, item.y);
+                               r->setRotation(payload.rotation);
+                           }
+                           r->setData(0, -1);// 标记为临时项，自动删除
+                           r->setZValue(item.z);
+                       }
 
-            // 创建 pixmap item（使用 FastTransformation 保持像素边缘清晰）
-            auto scaledPix = pix.scaled(w, h, Qt::KeepAspectRatio, Qt::FastTransformation);
-            auto *img = m_scene->addPixmap(scaledPix);
-            img->setPos(px, py);
+                       // 渲染图片
+                       else if constexpr (std::is_same_v<T, ImagePayload>)
+                       {
+                           // 加载图片
+                           QPixmap pix = loadImage(payload.path);
+                           if (pix.isNull())
+                           {
+                               return; // 加载失败，跳过
+                           }
 
-            // 支持旋转
-            if (q.rotation != 0.0)
-            {
-                img->setTransformOriginPoint(w / 2.0, h / 2.0);
-                img->setRotation(q.rotation);
-            }
+                           double scale = payload.scale; // scale
+                           double w = 128 * scale;
+                           double h = 128 * scale;
 
-            img->setData(0, -1);
-            img->setZValue(q.zValue);
-            break;
-        }
-        case QueueKind::Text:
-        {
-            QFont ftFont("Microsoft YaHei", 9);
-            ftFont.setBold(true);
-            auto *simpleText = m_scene->addSimpleText(q.text);
-            simpleText->setFont(ftFont);
-            simpleText->setBrush(q.color);
-            simpleText->setPos(q.x, q.y);
-            simpleText->setData(0, -1);
-            simpleText->setZValue(q.zValue);
-            break;
-        }
-        case QueueKind::Splash:
-        {
-            QFont ftFont("Microsoft YaHei", 20);
-            ftFont.setBold(true);
+                           double px = item.x, py = item.y;
+                           if (payload.align & Qt::AlignHCenter)
+                               px -= w / 2.0;
+                           if (payload.align & Qt::AlignVCenter)
+                               py -= h / 2.0;
 
-            // 随机初始偏移
-            auto rng = QRandomGenerator::global();
-            double offsetX = (rng->generateDouble() - 0.5) * 30.0;
-            double offsetY = (rng->generateDouble() - 0.5) * 30.0;
+                           // 创建 pixmap item（使用 FastTransformation 保持像素边缘清晰）
+                           auto scaledPix = pix.scaled(w, h, Qt::KeepAspectRatio, Qt::FastTransformation);
+                           auto *img = m_scene->addPixmap(scaledPix);
+                           img->setPos(px, py);
 
-            auto *font = m_scene->addSimpleText(q.text);
-            font->setFont(ftFont);
-            font->setBrush(q.color);
-            font->setPos(q.x - font->boundingRect().width() / 2.0 + offsetX, q.y - 30.0 + offsetY);
-            font->setTransformOriginPoint(font->boundingRect().center());
-            font->setZValue(500);
-            font->setScale(4.0);
+                           // 支持旋转
+                           if (payload.rotation != 0.0)
+                           {
+                               img->setTransformOriginPoint(w / 2.0, h / 2.0);
+                               img->setRotation(payload.rotation);
+                           }
 
-            auto *shadow = m_scene->addSimpleText(q.text);
-            shadow->setFont(ftFont);
-            shadow->setBrush(QColor("#000000").darker(160));
-            shadow->setPos(font->pos() + QPointF(2, 2));
-            shadow->setTransformOriginPoint(shadow->boundingRect().center());
-            shadow->setZValue(499);
-            shadow->setScale(4.0);
+                           img->setData(0, -1);// 标记为临时项，自动删除
+                           img->setZValue(item.z);
+                       }
 
-            auto *anim = new QVariantAnimation(this);
-            anim->setDuration(300);
-            anim->setStartValue(4.0);
-            anim->setEndValue(1.0);
-            anim->setEasingCurve(QEasingCurve::OutCubic);
-            connect(anim, &QVariantAnimation::valueChanged, this,
-                    [font, shadow](const QVariant &val)
-                    {
-                        double s = val.toDouble();
-                        font->setScale(s);
-                        shadow->setScale(s);
-                    });
-            connect(anim, &QVariantAnimation::finished, anim, &QObject::deleteLater);
-            anim->start(QAbstractAnimation::DeleteWhenStopped);
+                       // 渲染文字
+                       else if constexpr (std::is_same_v<T, TextPayload>){
+                         auto *text = m_scene->addSimpleText(payload.text);
+                         text->setFont(payload.style.font);
+                        text->setBrush(payload.style.color);
+                        text->setPos(item.x , item.y );
+                        text->setZValue(item.z);
+                        text->setData(0, -1); // 标记为临时项，自动删除
+                       }
 
-            QTimer::singleShot(800, this, [font, shadow]()
-                               {
-                if (font && font->scene()) font->scene()->removeItem(font);
+                       // 渲染跳字
+                       else if constexpr (std::is_same_v<T, SplashPayload>){
+
+                           // 随机初始偏移
+                           auto rng = QRandomGenerator::global();
+                           double offsetX = (rng->generateDouble() - 0.5) * 30.0;
+                           double offsetY = (rng->generateDouble() - 0.5) * 30.0;
+
+                           auto *text = m_scene->addSimpleText(payload.text);
+                           text->setFont(payload.style.font);
+                           text->setBrush(payload.style.color);
+                           text->setPos(item.x - text->boundingRect().width() / 2.0 + offsetX,
+                            item.y - 30.0 + offsetY);
+                           text->setTransformOriginPoint(text->boundingRect().center());
+                           text->setZValue(item.z);
+                           text->setScale(4.0);
+
+                           auto *shadow = m_scene->addSimpleText(payload.text);
+                           shadow->setFont(payload.style.font);
+                           shadow->setBrush(QColor("#000000").darker(160));
+                           shadow->setPos(text->pos() + QPointF(2, 2));
+                           shadow->setTransformOriginPoint(shadow->boundingRect().center());
+                           shadow->setZValue(item.z - 1);
+                           shadow->setScale(4.0);
+
+                           auto *anim = new QVariantAnimation(this);
+                           anim->setDuration(300);
+                           anim->setStartValue(4.0);
+                           anim->setEndValue(1.0);
+                           anim->setEasingCurve(QEasingCurve::OutCubic);
+                           connect(anim, &QVariantAnimation::valueChanged, this,
+                                   [text, shadow](const QVariant &val)
+                                   {
+                                       double s = val.toDouble();
+                                       text->setScale(s);
+                                       shadow->setScale(s);
+                                   });
+                           connect(anim, &QVariantAnimation::finished, anim, &QObject::deleteLater);
+                           anim->start(QAbstractAnimation::DeleteWhenStopped);
+
+                           QTimer::singleShot(800, this, [text, shadow]()
+                                              {
+                if (text && text->scene()) text->scene()->removeItem(text);
                 if (shadow && shadow->scene()) shadow->scene()->removeItem(shadow);
-                delete font;
+                delete text;
                 delete shadow; });
-            break;
-        }
-        }
+                           return;
+                       } },
+                   item.data);
     }
     m_queue.clear();
 }
@@ -209,15 +210,10 @@ void Renderer::queueImage(const QString &path, double x, double y,
                           Qt::Alignment align, int z)
 {
     QueueItem q;
-    q.kind = QueueKind::Image;
     q.x = x;
     q.y = y;
-    q.param1 = scale;
-    q.rotation = rotation;
-    q.text = path;
-    q.color = QColor(180, 180, 180);
-    q.zValue = z;
-    q.alignment = align;
+    q.z = z;
+    q.data = ImagePayload{path, rotation, scale, align};
     m_queue.push_back(q);
 }
 
@@ -225,12 +221,10 @@ void Renderer::queueCircle(double x, double y, double r,
                            const QColor &color, int z)
 {
     QueueItem q;
-    q.kind = QueueKind::Circle;
     q.x = x;
     q.y = y;
-    q.param1 = r;
-    q.color = color;
-    q.zValue = z;
+    q.z = z;
+    q.data = CirclePayload{r, color};
     m_queue.push_back(q);
 }
 
@@ -239,15 +233,10 @@ void Renderer::queueRect(double x, double y, double w, double h,
                          double rotationDeg, bool centered)
 {
     QueueItem q;
-    q.kind = QueueKind::Rect;
     q.x = x;
     q.y = y;
-    q.param1 = w;
-    q.param2 = h;
-    q.color = color;
-    q.zValue = z;
-    q.rotation = rotationDeg;
-    q.centered = centered;
+    q.z = z;
+    q.data = RectPayload{w, h, color, rotationDeg, centered};
     m_queue.push_back(q);
 }
 
@@ -255,23 +244,34 @@ void Renderer::queueText(const QString &text, double x, double y,
                          const QColor &color, int z)
 {
     QueueItem q;
-    q.kind = QueueKind::Text;
     q.x = x;
     q.y = y;
-    q.text = text;
-    q.color = color;
-    q.zValue = z;
+    q.z = z;
+    q.data = TextPayload{text, TextStyle().setColor(color)};
+    m_queue.push_back(q);
+}
+
+void Renderer::queueText(const QString &text, double x, double y,
+                         const TextStyle &style, int z)
+{
+    QueueItem q;
+    q.x = x;
+    q.y = y;
+    q.z = z;
+    q.data = TextPayload{text, style};
     m_queue.push_back(q);
 }
 
 void Renderer::queueSplash(const QString &text, double x, double y,
-                           const QColor &color)
+                           const QColor &color, int z)
 {
     QueueItem q;
-    q.kind = QueueKind::Splash;
     q.x = x;
     q.y = y;
-    q.text = text;
-    q.color = color;
+    q.z = z;
+    q.data = SplashPayload{text, TextStyle()
+                                     .setColor(color)
+                                     .setBold(true)
+                                     .setFontSize(18)};
     m_queue.push_back(q);
 }

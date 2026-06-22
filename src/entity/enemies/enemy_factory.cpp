@@ -27,10 +27,11 @@ void EnemyBehavior::renderSelf(const EnemyInstance &self, Renderer &renderer,
     double hpRatio = maxHp > 0 ? std::clamp(static_cast<double>(self.currentHp) / maxHp, 0.0, 1.0) : 0.0;
     renderer.queueRect(barX, barY, barW * hpRatio, barH, QColor("#DC3C3C"), 21);
 
+    TextStyle textStyle;
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX, barY + barH + 4.0, QColor(0, 0, 0, 160), 29);
+                       barX, barY + barH + 4.0, textStyle.setColor(QColor("#000000") ^ 0.7), 29);
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX - 2.0, barY + barH + 2.0, Qt::white, 30);
+                       barX - 2.0, barY + barH + 2.0, textStyle.setColor(QColor("#ffc6c6")), 30);
 }
 
 EnemyBehavior *createEnemyBehavior(int behaviorId)

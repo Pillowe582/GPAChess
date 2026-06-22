@@ -4,39 +4,98 @@
 #include <QObject>
 #include <QColor>
 #include <QString>
+#include <QFont>
 #include <Qt>
 #include <vector>
 #include <QPixmap>
 #include <QMap>
 
-enum class QueueKind
+// % 渲染通用数据定义
+
+struct TextStyle
 {
-    Image,
-    Circle,
-    Rect,
-    Text,
-    Splash
+    QColor color = Qt::white;
+    Qt::Alignment alignment = Qt::AlignCenter;
+    QFont font = QFont("Microsoft YaHei", 9); // 默认字体和字号
+    TextStyle &setColor(const QColor &c)
+    {
+        color = c;
+        return *this;
+    }
+    TextStyle &setAlign(Qt::Alignment a)
+    {
+        alignment = a;
+        return *this;
+    }
+    TextStyle &setFont(const QFont &f)
+    {
+        font = f;
+        return *this;
+    }
+    TextStyle &setFontSize(int size)
+    {
+        font.setPointSize(size);
+        return *this;
+    }
+    TextStyle &setBold(bool b)
+    {
+        font.setBold(b);
+        return *this;
+    }
 };
 
-struct QueueItem
+// % 各种Payload定义
+struct TextPayload
 {
-    QueueKind kind;
-    double x = 0, y = 0;
-    double param1 = 0; // Image:scale, Circle:radius, Rect:w
-    double param2 = 0; // Rect:h
-    double rotation = 0;
     QString text;
+    TextStyle style;
+};
+
+struct ImagePayload
+{
+    QString path;
+    double rotation = 0.0;
+    double scale = 1.0;
+    Qt::Alignment align = Qt::AlignCenter;
+};
+
+struct CirclePayload
+{
+    double radius;
     QColor color;
-    int zValue = 100;
-    Qt::Alignment alignment = Qt::AlignCenter;
+};
+
+struct RectPayload
+{
+    double width, height;
+    QColor color;
+    double rotation = 0.0;
     bool centered = false;
+};
+
+struct SplashPayload
+{
+    QString text;
+    TextStyle style;
 };
 
 class QGraphicsScene;
 
-/// 渲染器 —— 纯绘制原语，不包含任何实体相关的绘制逻辑
-///
-/// Queue+Flush 模式：behavior 在 tick 中调 queueXxx()，帧末 flush() 一次渲染
+// % 渲染队列项
+struct QueueItem
+{
+    double x = 0, y = 0;
+    int z = 100;
+    std::variant<TextPayload,
+                 ImagePayload,
+                 CirclePayload,
+                 RectPayload,
+                 SplashPayload>
+        data; // 具体的渲染数据
+};
+/// % 渲染器
+// 仅提供接口
+/// Queue+Flush 模式：behavior 在 tick 中调 queueXXX()，帧末 flush() 一次渲染
 class Renderer : public QObject
 {
     Q_OBJECT
@@ -82,13 +141,21 @@ public:
     void queueText(const QString &text, double x, double y,
                    const QColor &color, int z = 100);
 
+    /// @brief 排队绘制文字
+    /// @param text 文本内容
+    /// @param x X坐标
+    /// @param y Y坐标
+    /// @param style 文字样式
+    void queueText(const QString &text, double x, double y,
+                   const TextStyle &style, int z = 200);
+
     /// @brief 排队绘制跳字
     /// @param text 文本内容
     /// @param x X坐标
     /// @param y Y坐标
     /// @param color 颜色
     void queueSplash(const QString &text, double x, double y,
-                     const QColor &color);
+                     const QColor &color, int z = 1000);
     const QColor &color;
 
     const std::vector<QueueItem> &getQueue() const { return m_queue; }
@@ -104,4 +171,15 @@ private:
     QPixmap loadImage(const QString &path);
 };
 
+// % 重载透明值运算符
+/// @brief 为 QColor 设置 alpha 值的便捷操作符
+/// @param color 传入QColor对象
+/// @param alpha 传入alpha值（0.0~1.0）
+/// @return 修改后的alpha自身
+inline QColor operator^(const QColor &color, double alpha)
+{
+    QColor c = color;
+    c.setAlphaF(alpha);
+    return c;
+}
 #endif
