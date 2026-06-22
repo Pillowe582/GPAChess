@@ -15,8 +15,7 @@
 #include <cmath>
 
 Renderer::Renderer(QGraphicsScene *scene, QObject *parent)
-    : QObject(parent), m_scene(scene),
-      color(Qt::white)
+    : QObject(parent), m_scene(scene)
 {
 }
 

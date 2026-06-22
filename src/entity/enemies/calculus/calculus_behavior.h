@@ -4,16 +4,14 @@
 #include <memory>
 #include <QVector2D>
 
-class ChessInstance;
+class AllyInstance;
+class GameManager;
 
 /// 微积分 敌方：近战，找最近我方单位，移动到70px后，挥舞武器
 class CalculusEnemy : public EnemyBehavior
 {
 public:
-    void tick(double dt, EnemyInstance &self,
-              std::vector<std::unique_ptr<ChessInstance>> &allies,
-              Renderer &renderer,
-              int &pendingGold, int &pendingExp) override;
+    void tick(double dt, BaseEntity &self, GameManager &gameManager) override;
 
     void onStart(EnemyInstance &self);
 

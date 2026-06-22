@@ -2,16 +2,15 @@
 #define BETA_ALLY_H
 #include "entity/ally_behavior.h"
 
+class GameManager;
+
 /// Beta 我方：远程，找最远敌人，发射子弹，不移动
 class BetaAlly : public AllyBehavior
 {
 public:
-    void tick(double dt, ChessInstance &self,
-              std::vector<EnemyInstance> &enemies,
-              Renderer &renderer,
-              int &pendingGold, int &pendingExp) override;
+    void tick(double dt, BaseEntity &self, GameManager &gameManager) override;
 
-    void onStart(ChessInstance &self);
+    void onStart(AllyInstance &self);
 
 private:
     // ---- 此角色自有的子弹数据 ----

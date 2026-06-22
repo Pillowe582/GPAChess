@@ -107,11 +107,11 @@ double LivingEntity::dealDamage(double rawDamage, BaseEntity &source, DamageType
     }
     case DamageType::Immune:
     {
-        if (gameManager && gameManager->getRenderer())
+        if (gameManager)
         {
-            gameManager->getRenderer()->queueSplash(QString("免疫"),
-                                                    transform.x, transform.y - 20,
-                                                    "#b3b3b3");
+            gameManager->getRenderer().queueSplash(QString("免疫"),
+                                                   transform.x, transform.y - 20,
+                                                   "#b3b3b3");
         }
         return 0.0;
     }
@@ -125,11 +125,11 @@ double LivingEntity::dealDamage(double rawDamage, BaseEntity &source, DamageType
     if (currentHp <= 0)
         setDeath();
 
-    if (gameManager && gameManager->getRenderer())
+    if (gameManager)
     {
-        gameManager->getRenderer()->queueSplash(QString("%1").arg(static_cast<int>(actual)),
-                                                transform.x, transform.y - 20,
-                                                type.color);
+        gameManager->getRenderer().queueSplash(QString("%1").arg(static_cast<int>(actual)),
+                                               transform.x, transform.y - 20,
+                                               type.color);
     }
 
     return actual;
@@ -139,14 +139,14 @@ double LivingEntity::dealDamage(double rawDamage, BaseEntity &source, DamageType
 // % ChessInstance 实现
 // ============================================================================
 
-ChessInstance::ChessInstance(const AllyConfig &cfg, GameManager *mgr)
+AllyInstance::AllyInstance(const AllyConfig &cfg, GameManager *mgr)
     : AllyConfig(cfg), LivingEntity(mgr)
 {
     calculateBaseStatsByStar();
     resetStatus();
 }
 
-void ChessInstance::calculateBaseStatsByStar()
+void AllyInstance::calculateBaseStatsByStar()
 {
     // 从图鉴数值初始化
     maxHp.base = baseHp;
@@ -160,7 +160,7 @@ void ChessInstance::calculateBaseStatsByStar()
     }
 }
 
-void ChessInstance::resetStatus()
+void AllyInstance::resetStatus()
 {
     currentHp = maxHp.getFinal();
     currentMp = 0;
@@ -170,7 +170,7 @@ void ChessInstance::resetStatus()
     targetEnemyId = -1;
 }
 
-double ChessInstance::dealDamage(double rawDamage, BaseEntity &source, DamageType type)
+double AllyInstance::dealDamage(double rawDamage, BaseEntity &source, DamageType type)
 {
     // 如果是塔且必修敌人已清除，标记为免疫伤害
     if (isTower && gameManager && gameManager->isMandatoryEnemiesCleared())
@@ -259,7 +259,7 @@ int PlayerAssets::firstEmptyBenchSlot() const
     return -1;
 }
 
-ChessInstance *PlayerAssets::getUnitByUuid(int uuid)
+AllyInstance *PlayerAssets::getUnitByUuid(int uuid)
 {
     for (auto &u : ownedChesses)
         if (u->uuid == uuid)
@@ -267,7 +267,7 @@ ChessInstance *PlayerAssets::getUnitByUuid(int uuid)
     return nullptr;
 }
 
-const ChessInstance *PlayerAssets::getUnitByUuid(int uuid) const
+const AllyInstance *PlayerAssets::getUnitByUuid(int uuid) const
 {
     for (auto &u : ownedChesses)
         if (u->uuid == uuid)

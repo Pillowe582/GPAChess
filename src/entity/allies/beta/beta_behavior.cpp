@@ -1,17 +1,17 @@
 #include "beta_behavior.h"
 #include "state.h"
 #include "renderer.h"
+#include "game_manager.h"
 #include <cmath>
 #include <QRandomGenerator>
 
-void BetaAlly::tick(double dt, ChessInstance &self,
-                    std::vector<EnemyInstance> &enemies,
-                    Renderer &renderer,
-                    int &pendingGold, int &pendingExp)
+void BetaAlly::tick(double dt, BaseEntity &baseSelf, GameManager &gameManager)
 {
+    AllyInstance &self = static_cast<AllyInstance &>(baseSelf);
+    auto &enemies = gameManager.getGameEntities().enemies;
+    Renderer &renderer = gameManager.getRenderer();
+
     auto rng = QRandomGenerator::global();
-    auto jitter = [rng]() -> double
-    { return (rng->generateDouble() - 0.5) * 30.0; };
 
     // ====== 推进已有子弹 ======
     for (size_t i = 0; i < m_bullets.size();)
@@ -28,18 +28,17 @@ void BetaAlly::tick(double dt, ChessInstance &self,
         bool hit = false;
         for (auto &enemy : enemies)
         {
-            if (!enemy.isAlive)
+            if (!enemy->isAlive)
                 continue;
-            double dx = b.x - enemy.transform.x;
-            double dy = b.y - enemy.transform.y;
+            double dx = b.x - enemy->transform.x;
+            double dy = b.y - enemy->transform.y;
             if (std::sqrt(dx * dx + dy * dy) < 40.0)
             {
-                enemy.dealDamage(b.damage, self, DamageType{DamageType::Physical, QColor("#FFFFFF")});
-                if (!enemy.isAlive)
+                enemy->dealDamage(b.damage, self, DamageType{DamageType::Physical, QColor("#FFFFFF")});
+                if (!enemy->isAlive)
                 {
-                    if (rng->bounded(10) == 0)
-                        pendingGold += enemy.baseGoldReward;
-                    pendingExp += enemy.baseExpReward;
+                    int gold = (rng->bounded(10) == 0) ? enemy->baseGoldReward : 0;
+                    gameManager.addPendingRewards(gold, enemy->baseExpReward);
                 }
                 hit = true;
                 break;
@@ -61,15 +60,15 @@ void BetaAlly::tick(double dt, ChessInstance &self,
     double bestDist = -1.0;
     for (auto &e : enemies)
     {
-        if (!e.isAlive)
+        if (!e->isAlive)
             continue;
-        double dx = e.transform.x - self.transform.x;
-        double dy = e.transform.y - self.transform.y;
+        double dx = e->transform.x - self.transform.x;
+        double dy = e->transform.y - self.transform.y;
         double d = std::sqrt(dx * dx + dy * dy);
         if (d > bestDist)
         {
             bestDist = d;
-            target = &e;
+            target = e;
         }
     }
     if (!target)
@@ -92,11 +91,11 @@ void BetaAlly::tick(double dt, ChessInstance &self,
     m_cooldown = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;
 }
 
-void BetaAlly::onStart(ChessInstance &self)
+void BetaAlly::onStart(AllyInstance &self)
 {
     // 战斗开始时清空上一回合残留的子弹
     m_bullets.clear();
-    
+
     // 设置初始冷却时间，避免立即发射子弹
     int atkSpd = self.baseAttackSpeed;
     m_cooldown = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;

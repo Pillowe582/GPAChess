@@ -3,16 +3,14 @@
 #include "entity/enemy_behavior.h"
 #include <memory>
 
-class ChessInstance;
+class AllyInstance;
+class GameManager;
 
 /// Beta 敌方：远程，找最远我方单位，发射子弹；无目标时攻击塔
 class BetaEnemy : public EnemyBehavior
 {
 public:
-    void tick(double dt, EnemyInstance &self,
-              std::vector<std::unique_ptr<ChessInstance>> &allies,
-              Renderer &renderer,
-              int &pendingGold, int &pendingExp) override;
+    void tick(double dt, BaseEntity &self, GameManager &gameManager) override;
 
     void onStart(EnemyInstance &self);
 

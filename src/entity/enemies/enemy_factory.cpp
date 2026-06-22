@@ -8,7 +8,7 @@
 
 /// 敌人渲染：使用纹理图片 + 血条 + 名字/HP
 void EnemyBehavior::renderSelf(const EnemyInstance &self, Renderer &renderer,
-                               double x = 0, double y = 0)
+                               double x, double y)
 {
 
     // 根据 self.name 选择对应的图片

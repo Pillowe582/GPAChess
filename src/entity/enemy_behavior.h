@@ -5,20 +5,15 @@
 #include <vector>
 #include <memory>
 
-class ChessInstance;
+class AllyInstance;
 class EnemyInstance;
 class Renderer;
+class GameManager;
 
 class EnemyBehavior : public BaseBehavior
 {
 public:
-    // ========== 逻辑 tick ==========
-    virtual void tick(double dt,
-                      EnemyInstance &self,
-                      std::vector<std::unique_ptr<ChessInstance>> &allies,
-                      Renderer &renderer,
-                      int &pendingGold,
-                      int &pendingExp) = 0;
+    void tick(double dt, BaseEntity &self, GameManager &gameManager) override = 0;
 
     /// 回合开始时调用，用于初始化技能冷却等状态
     virtual void onStart(EnemyInstance & /*self*/) { /* 默认空实现 */ }

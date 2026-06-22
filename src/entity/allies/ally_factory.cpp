@@ -9,7 +9,7 @@
 #include <algorithm>
 
 /// Queue 渲染
-void AllyBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
+void AllyBehavior::renderSelf(const AllyInstance &self, Renderer &renderer,
                               double x, double y)
 {
     // 根据 self.name 选择对应的图片
@@ -45,7 +45,7 @@ void AllyBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
 /// @param self 棋子
 /// @param p QPainter对象
 /// @param scale 缩放
-void AllyBehavior::renderSelf(const ChessInstance &self, QPainter &p,
+void AllyBehavior::renderSelf(const AllyInstance &self, QPainter &p,
                               double scale)
 {
     p.setRenderHint(QPainter::Antialiasing);

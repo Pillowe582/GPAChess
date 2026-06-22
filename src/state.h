@@ -156,10 +156,10 @@ public:
 // % 运行时实例
 // ============================================================================
 
-class ChessInstance : public AllyConfig, public LivingEntity
+class AllyInstance : public AllyConfig, public LivingEntity
 {
 public:
-    explicit ChessInstance(const AllyConfig &cfg, GameManager *mgr = nullptr);
+    explicit AllyInstance(const AllyConfig &cfg, GameManager *mgr = nullptr);
 
     int starLevel = 1;
     Attribute atk;
@@ -206,7 +206,7 @@ public:
     int totalCredit = 0, totalGradePoint = 0;
 
     // 已拥有的棋子实例
-    std::vector<std::unique_ptr<ChessInstance>> ownedChesses;
+    std::vector<std::unique_ptr<AllyInstance>> ownedChesses;
 
     int deployedCount() const;
     int benchCount() const;
@@ -217,8 +217,8 @@ public:
 
     int firstEmptyBenchSlot() const;
 
-    ChessInstance *getUnitByUuid(int uuid);
-    const ChessInstance *getUnitByUuid(int uuid) const;
+    AllyInstance *getUnitByUuid(int uuid);
+    const AllyInstance *getUnitByUuid(int uuid) const;
 };
 
 #endif

@@ -2,16 +2,15 @@
 #define ALPHA_ALLY_H
 #include "entity/ally_behavior.h"
 
+class GameManager;
+
 /// Alpha 我方：近战，找最近敌人，移动到70px距离后3圈武器挥砍
 class AlphaAlly : public AllyBehavior
 {
 public:
-    void tick(double dt, ChessInstance &self,
-              std::vector<EnemyInstance> &enemies,
-              Renderer &renderer,
-              int &pendingGold, int &pendingExp) override;
+    void tick(double dt, BaseEntity &self, GameManager &gameManager) override;
 
-    void onStart(ChessInstance &self);
+    void onStart(AllyInstance &self);
 
 private:
     // ---- 此角色自有的武器状态 ----

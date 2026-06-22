@@ -497,7 +497,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
     auto &units = assets.ownedChesses;
 
     // 查找拖拽的单位
-    ChessInstance *unit = assets.getUnitByUuid(uuid);
+    AllyInstance *unit = assets.getUnitByUuid(uuid);
     if (!unit)
     {
         m_sellLabel->setText(QStringLiteral("出售"));
@@ -576,7 +576,7 @@ void MainWindow::onUnitDragFinished(int uuid, QPointF scenePos)
 
         if (rawSlot >= 0 && rawSlot != oldBenchSlot)
         {
-            ChessInstance *occupant = nullptr;
+            AllyInstance *occupant = nullptr;
             for (auto &u : units)
             {
                 if (!u->deployed && u->benchSlot == rawSlot && u->getUuid() != uuid)

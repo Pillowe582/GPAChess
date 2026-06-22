@@ -1,14 +1,15 @@
 #include "beta_behavior.h"
 #include "state.h"
 #include "renderer.h"
+#include "game_manager.h"
 #include <cmath>
 #include <QRandomGenerator>
 
-void BetaEnemy::tick(double dt, EnemyInstance &self,
-                     std::vector<std::unique_ptr<ChessInstance>> &allies,
-                     Renderer &renderer,
-                     int &pendingGold, int &pendingExp)
+void BetaEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManager)
 {
+    EnemyInstance &self = static_cast<EnemyInstance &>(baseSelf);
+    auto &allies = gameManager.getPlayerAssets().ownedChesses;
+    Renderer &renderer = gameManager.getRenderer();
 
     // ====== 远程逻辑 ======
     // ====== 推进已有子弹 ======
@@ -50,7 +51,7 @@ void BetaEnemy::tick(double dt, EnemyInstance &self,
         return;
 
     // ====== 找最远我方单位======
-    ChessInstance *target = nullptr;
+    AllyInstance *target = nullptr;
     double bestDist = -1.0;
     for (auto &a : allies)
     {
@@ -113,7 +114,7 @@ void BetaEnemy::onStart(EnemyInstance &self)
 {
     // 战斗开始时清空上一回合残留的子弹
     m_bullets.clear();
-    
+
     // 设置初始冷却时间，避免立即发射子弹
     int atkSpd = self.baseAttackSpeed;
     double interval = atkSpd > 0 ? (1.0 / atkSpd) : 1.0;

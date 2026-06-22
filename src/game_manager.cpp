@@ -1,4 +1,6 @@
 #include "game_manager.h"
+#include "mainwindow.h"
+#include "shop_window.h"
 #include "database_manager.h"
 #include "print.h"
 #include "ally_behavior.h"
@@ -45,7 +47,7 @@ void GameManager::initialize()
     m_weightedGpaSum = 0.0;
     m_totalCredits = 0;
     m_phase = RoundPhase::Prepare;
-    m_enemies.clear();
+    m_gameEntities.enemies.clear();
     m_enemyConfigs.clear();
 
     // 生成本局所有回合信息
@@ -66,7 +68,7 @@ void GameManager::initialize()
         towerCfg.baseDef = 100;
         towerCfg.speed = 0;
         towerCfg.behaviorId = -1; // 塔专用
-        auto towerInst = std::make_unique<ChessInstance>(towerCfg, this);
+        auto towerInst = std::make_unique<AllyInstance>(towerCfg, this);
         towerInst->isTower = true;
         towerInst->deployed = true;
         towerInst->transform.x = 200.0;
@@ -82,6 +84,10 @@ void GameManager::initialize()
                 break;
             }
     }
+    // 将各类实体指针注册到全局导航结构中
+    m_gameEntities.allies.clear();
+    m_gameEntities.enemies.clear();
+    m_gameEntities.neutral.clear();
 
     // 开局免费给n个随机角色放在备战席
     const auto &pool = m_database->allAllyConfigs();
@@ -89,7 +95,7 @@ void GameManager::initialize()
     for (int i = 0; i < starterCount && !pool.empty(); ++i)
     {
         int idx = m_rng.bounded(static_cast<int>(pool.size()));
-        auto inst = std::make_unique<ChessInstance>(pool[idx], this);
+        auto inst = std::make_unique<AllyInstance>(pool[idx], this);
 
         inst->deployed = false;
         inst->benchSlot = i;
@@ -158,9 +164,9 @@ void GameManager::startRound(int roundNumber)
     for (const auto &u : m_player.ownedChesses)
         if (u && u->behavior)
             u->behavior->onStart(*u);
-    for (auto &e : m_enemies)
-        if (e.behavior)
-            e.behavior->onStart(e);
+    for (auto &e : m_gameEntities.enemies)
+        if (e && e->behavior)
+            e->behavior->onStart(*e);
 
     m_tickTimer->start();
 }
@@ -225,7 +231,7 @@ void GameManager::resetUnitsForNextRound()
             unit->transform.y = unit->savedPosY;
         }
     }
-    m_enemies.clear();
+    m_gameEntities.enemies.clear();
     m_timeAccumulator = 0.0;
     print("All units reset for next round, formation preserved");
 }
@@ -243,19 +249,19 @@ void GameManager::transitionPhase(RoundPhase newPhase)
 // % 敌方生成逻辑
 void GameManager::spawnEnemies(int roundNumber, int count, bool mandatory)
 {
-    m_enemies.clear();
+    m_gameEntities.enemies.clear();
 
     // 根据回合数决定敌方数量
     auto picked = pickRandomEnemies(roundNumber, count);
 
     for (size_t i = 0; i < picked.size(); ++i)
     {
-        m_enemies.emplace_back(picked[i], false, roundNumber, this);
-        EnemyInstance &e = m_enemies.back();
-        e.isRequired = mandatory;
-        e.behavior.reset(createEnemyBehavior(picked[i].behaviorId));
-        e.transform.x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
-        e.transform.y = 160.0 + (static_cast<double>(i / 3) * 180.0);
+        m_gameEntities.enemies.emplace_back(new EnemyInstance(picked[i], false, roundNumber, this));
+        EnemyInstance *e = m_gameEntities.enemies.back();
+        e->isRequired = mandatory;
+        e->behavior.reset(createEnemyBehavior(picked[i].behaviorId));
+        e->transform.x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
+        e->transform.y = 160.0 + (static_cast<double>(i / 3) * 180.0);
     }
 }
 
@@ -312,20 +318,18 @@ void GameManager::tickBehaviors(double deltaSeconds)
     // Ally (含塔 —— 塔就是 isTower=true 的普通 ally)
     for (auto &ally : m_player.ownedChesses)
         if (ally->isAlive && ally->deployed && ally->behavior)
-            ally->behavior->tick(deltaSeconds, *ally, m_enemies, *m_renderer,
-                                 m_pendingGold, m_pendingExp);
+            ally->behavior->tick(deltaSeconds, *ally, *this);
 
     // Enemy
-    for (auto &enemy : m_enemies)
-        if (enemy.isAlive && enemy.behavior)
-            enemy.behavior->tick(deltaSeconds, enemy, m_player.ownedChesses,
-                                 *m_renderer, m_pendingGold, m_pendingExp);
+    for (auto &enemy : m_gameEntities.enemies)
+        if (enemy->isAlive && enemy->behavior)
+            enemy->behavior->tick(deltaSeconds, *enemy, *this);
 
     // ═══════ 渲染 Phase ═══════
     m_renderer->beginFrame();
-    for (auto &enemy : m_enemies)
-        if (enemy.isAlive && enemy.behavior)
-            enemy.behavior->renderSelf(enemy, *m_renderer, enemy.transform.x, enemy.transform.y);
+    for (auto &enemy : m_gameEntities.enemies)
+        if (enemy->isAlive && enemy->behavior)
+            enemy->behavior->renderSelf(*enemy, *m_renderer, enemy->transform.x, enemy->transform.y);
 
     // Ally 渲染由 refreshAllUnits 处理
 }
@@ -339,14 +343,14 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
 {
     // 检查我方是否还有非塔单位存活
     bool anyAllyAlive = std::any_of(m_player.ownedChesses.begin(), m_player.ownedChesses.end(),
-                                    [](const std::unique_ptr<ChessInstance> &ally)
+                                    [](const std::unique_ptr<AllyInstance> &ally)
                                     { return ally->isAlive && !ally->isTower && ally->deployed; });
-    bool anyEnemyAlive = std::any_of(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
-                                     { return e.isAlive; });
+    bool anyEnemyAlive = std::any_of(m_gameEntities.enemies.begin(), m_gameEntities.enemies.end(), [](const EnemyInstance *e)
+                                     { return e->isAlive; });
 
     // 检查是否有必修敌人存活
-    bool anyMandatoryAlive = std::any_of(m_enemies.begin(), m_enemies.end(), [](const EnemyInstance &e)
-                                         { return e.isAlive && e.isRequired; });
+    bool anyMandatoryAlive = std::any_of(m_gameEntities.enemies.begin(), m_gameEntities.enemies.end(), [](const EnemyInstance *e)
+                                         { return e->isAlive && e->isRequired; });
 
     if (!anyAllyAlive && m_mandatoryEnemiesCleared)
     {

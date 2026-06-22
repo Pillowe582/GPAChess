@@ -2,8 +2,6 @@
 #define GAMEMANAGER_H
 
 #include <QObject>
-#include "mainwindow.h"
-#include "shop_window.h"
 #include <QTimer>
 #include <QRandomGenerator>
 #include <vector>
@@ -11,11 +9,38 @@
 
 #define GAME_TICK_INTERVAL_MS 5
 #define BASE_TOWER_HP 10000
+
+// 前向声明
 class DatabaseManager;
 class Renderer;
 class TowerBehavior;
+class ShopWindow;
+class MainWindow;
 
 #include <memory> // for unique_ptr
+#include "state.h"
+
+// 游戏实体集合，提供导航接口
+struct GameEntities
+{
+    std::vector<AllyInstance *> allies;
+    std::vector<EnemyInstance *> enemies;
+    std::vector<BaseEntity *> neutral; // 预留给中立单位（如陷阱、障碍物等）
+
+    void startBehaviors()
+    {
+        for (const auto &ally : this->allies)
+        {
+            if (ally && ally->behavior)
+                ally->behavior->onStart(*ally);
+        }
+        for (const auto &enemy : this->enemies)
+        {
+            if (enemy && enemy->behavior)
+                enemy->behavior->onStart(*enemy);
+        }
+    }
+};
 
 class GameManager : public QObject
 {
@@ -42,8 +67,8 @@ public:
     int getMaxTowerHp() const;
     PlayerAssets &getPlayerAssets() { return m_player; }
     const PlayerAssets &getPlayerAssets() const { return m_player; }
-    const std::vector<EnemyInstance> &getEnemies() const { return m_enemies; }
-    Renderer *getRenderer() const { return m_renderer; }
+    const GameEntities &getGameEntities() const { return m_gameEntities; }
+    Renderer &getRenderer() const { return *m_renderer; }
 
     const std::vector<RoundInfo> &getRoundInfos() const { return m_roundInfos; }
 
@@ -55,6 +80,12 @@ public:
 
     /// 设置渲染器引用（由 MainWindow 注入）
     void setRenderer(Renderer *r) { m_renderer = r; }
+
+    void addPendingRewards(int gold = 0, int exp = 0)
+    {
+        m_pendingGold += gold;
+        m_pendingExp += exp;
+    }
 
     quint32 gameSeed() const { return m_gameSeed; }
 
@@ -142,11 +173,12 @@ private:
     RoundPhase m_phase;
 
     PlayerAssets m_player;
-    std::vector<EnemyInstance> m_enemies;
+    GameEntities m_gameEntities;
+
     std::vector<EnemyConfig> m_enemyConfigs;
     std::vector<RoundInfo> m_roundInfos;
 
-    ChessInstance *m_tower = nullptr; // 指向 ownedChesses 中的塔实例
+    AllyInstance *m_tower = nullptr; // 指向 ownedChesses 中的塔实例
     double m_towerHpMultiplier = 1.0;
     int m_roundStartGold = 0;
     int m_roundStartExp = 0;

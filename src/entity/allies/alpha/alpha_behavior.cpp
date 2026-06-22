@@ -1,17 +1,17 @@
 #include "alpha_behavior.h"
 #include "state.h"
 #include "renderer.h"
+#include "game_manager.h"
 #include <cmath>
 #include <QRandomGenerator>
 
-void AlphaAlly::tick(double dt, ChessInstance &self,
-                     std::vector<EnemyInstance> &enemies,
-                     Renderer &renderer,
-                     int &pendingGold, int &pendingExp)
+void AlphaAlly::tick(double dt, BaseEntity &baseSelf, GameManager &gameManager)
 {
+    AllyInstance &self = static_cast<AllyInstance &>(baseSelf);
+    auto &enemies = gameManager.getGameEntities().enemies;
+    Renderer &renderer = gameManager.getRenderer();
+
     auto rng = QRandomGenerator::global();
-    auto jitter = [rng]() -> double
-    { return (rng->generateDouble() - 0.5) * 30.0; };
 
     m_cooldown = std::max(0.0, m_cooldown - dt);
 
@@ -28,19 +28,18 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
             // 每圈造成一次范围伤害
             for (auto &enemy : enemies)
             {
-                if (!enemy.isAlive)
+                if (!enemy->isAlive)
                     continue;
-                double dx = enemy.transform.x - self.transform.x;
-                double dy = enemy.transform.y - self.transform.y;
+                double dx = enemy->transform.x - self.transform.x;
+                double dy = enemy->transform.y - self.transform.y;
                 if (dx * dx + dy * dy < 14400.0)
                 {
                     int dmg = self.atk.getFinal();
-                    enemy.dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#FF8C32")});
-                    if (!enemy.isAlive)
+                    enemy->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#FF8C32")});
+                    if (!enemy->isAlive)
                     {
-                        if (rng->bounded(10) == 0)
-                            pendingGold += enemy.baseGoldReward;
-                        pendingExp += enemy.baseExpReward;
+                        int gold = (rng->bounded(10) == 0) ? enemy->baseGoldReward : 0;
+                        gameManager.addPendingRewards(gold, enemy->baseExpReward);
                     }
                     break;
                 }
@@ -71,15 +70,15 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
     double bestDist = 1e18;
     for (auto &e : enemies)
     {
-        if (!e.isAlive)
+        if (!e->isAlive)
             continue;
-        double dx = e.transform.x - self.transform.x;
-        double dy = e.transform.y - self.transform.y;
+        double dx = e->transform.x - self.transform.x;
+        double dy = e->transform.y - self.transform.y;
         double d = std::sqrt(dx * dx + dy * dy);
         if (d < bestDist)
         {
             bestDist = d;
-            target = &e;
+            target = e;
         }
     }
     if (!target)
@@ -108,7 +107,7 @@ void AlphaAlly::tick(double dt, ChessInstance &self,
     }
 }
 
-void AlphaAlly::onStart(ChessInstance &self)
+void AlphaAlly::onStart(AllyInstance &self)
 {
     // 战斗开始时重置武器状态，避免残留上一回合的挥砍动画
     m_weapon.active = false;
@@ -116,7 +115,7 @@ void AlphaAlly::onStart(ChessInstance &self)
     m_weapon.elapsed = 0.0;
     m_weapon.rotationsDone = 0;
     m_weapon.targetUuid = -1;
-    
+
     // 设置初始冷却时间，避免立即发动攻击
     int spd = self.baseAttackSpeed;
     m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;

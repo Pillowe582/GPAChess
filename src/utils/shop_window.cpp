@@ -109,7 +109,7 @@ void ShopWindow::onPurchaseClicked()
     // 扣除金币，创建棋子实例并放入备战席
     assets.gold -= cfg.cost;
     int slot = assets.firstEmptyBenchSlot();
-    auto inst = std::make_unique<ChessInstance>(cfg, m_gameManager);
+    auto inst = std::make_unique<AllyInstance>(cfg, m_gameManager);
 
     inst->deployed = false;
     inst->benchSlot = slot;

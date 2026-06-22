@@ -1,14 +1,15 @@
 #include "calculus_behavior.h"
 #include "state.h"
 #include "renderer.h"
+#include "game_manager.h"
 #include <cmath>
 #include <QRandomGenerator>
 
-void CalculusEnemy::tick(double dt, EnemyInstance &self,
-                         std::vector<std::unique_ptr<ChessInstance>> &allies,
-                         Renderer &renderer,
-                         int &pendingGold, int &pendingExp)
+void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManager)
 {
+    EnemyInstance &self = static_cast<EnemyInstance &>(baseSelf);
+    auto &allies = gameManager.getPlayerAssets().ownedChesses;
+    Renderer &renderer = gameManager.getRenderer();
 
     // ====== 近战逻辑 ======
     m_cooldown = std::max(0.0, m_cooldown - dt);
@@ -59,7 +60,7 @@ void CalculusEnemy::tick(double dt, EnemyInstance &self,
         return;
 
     // ---- 找最近我方单位（排除塔）----
-    ChessInstance *target = nullptr;
+    AllyInstance *target = nullptr;
     double bestDist = 1e18;
     for (auto &ally : allies)
     {
@@ -136,7 +137,7 @@ void CalculusEnemy::onStart(EnemyInstance &self)
     m_weapon.rotSpeed = -0.5f;
     m_weapon.rotationsDone = 0;
     m_weapon.targetUuid = -1;
-    
+
     // 设置初始冷却时间，避免立即发动攻击
     int spd = self.baseAttackSpeed;
     m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;

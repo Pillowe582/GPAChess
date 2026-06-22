@@ -1,6 +1,7 @@
 #include "allies/tower/tower_behavior.h"
 #include "state.h"
 #include "renderer.h"
+#include "game_manager.h"
 
 #include <algorithm>
 #include <QRandomGenerator>
@@ -9,30 +10,27 @@
 #include <QFont>
 
 // % 回合开始
-void TowerBehavior::onStart(ChessInstance &self)
+void TowerBehavior::onStart(AllyInstance &self)
 {
     // 战斗开始时设置初始攻击冷却，避免塔立即开火
     m_currentAttackCooldown = m_maxAttackCooldown; // 塔的攻击间隔为1.5秒
 }
 
 //% 每逻辑Tick
-void TowerBehavior::tick(double dt,
-                         ChessInstance &self,
-                         std::vector<EnemyInstance> &enemies,
-                         Renderer &renderer,
-                         int &pendingGold,
-                         int &pendingExp)
+void TowerBehavior::tick(double dt, BaseEntity &baseSelf, GameManager &gameManager)
 {
+    AllyInstance &self = static_cast<AllyInstance &>(baseSelf);
 
     m_hpRatio = self.maxHp.getFinal() > 0
                     ? self.currentHp / self.maxHp.getFinal()
                     : 1.0;
-    attack(dt, self, enemies, pendingGold, pendingExp); // 执行攻击逻辑
+    attack(dt, self, gameManager); // 执行攻击逻辑
 }
 
 // % 攻击逻辑
-void TowerBehavior::attack(double dt, ChessInstance &self, std::vector<EnemyInstance> &enemies, int &pendingGold, int &pendingExp)
+void TowerBehavior::attack(double dt, AllyInstance &self, GameManager &gameManager)
 {
+    auto &enemies = gameManager.getGameEntities().enemies;
     auto rng = QRandomGenerator::global();
 
     m_currentAttackCooldown = std::max(0.0, m_currentAttackCooldown - dt);
@@ -41,28 +39,28 @@ void TowerBehavior::attack(double dt, ChessInstance &self, std::vector<EnemyInst
 
     // 找第一个存活敌人
     auto it = std::find_if(enemies.begin(), enemies.end(),
-                           [](const EnemyInstance &e)
-                           { return e.isAlive && e.isRequired; });
+                           [](const EnemyInstance *e)
+                           { return e->isAlive && e->isRequired; });
     if (it == enemies.end())
         return;
 
     // 伤害计算
-    int dmg = static_cast<int>(it->maxHp.getFinal() * (0.01 + (1.0 - m_hpRatio) * 2.0));
+    EnemyInstance *target = *it;
+    int dmg = static_cast<int>(target->maxHp.getFinal() * (0.01 + (1.0 - m_hpRatio) * 2.0));
 
-    it->dealDamage(dmg, self, DamageType{DamageType::True, QColor("#46a6ff")});
+    target->dealDamage(dmg, self, DamageType{DamageType::True, QColor("#46a6ff")});
 
-    if (!it->isAlive)
+    if (!target->isAlive)
     {
-        if (rng->bounded(10) == 0)
-            pendingGold += it->baseGoldReward;
-        pendingExp += it->baseExpReward;
+        int gold = (rng->bounded(10) == 0) ? target->baseGoldReward : 0;
+        gameManager.addPendingRewards(gold, target->baseExpReward);
     }
 
     m_currentAttackCooldown = m_maxAttackCooldown;
 }
 
 // % Queue 渲染
-void TowerBehavior::renderSelf(const ChessInstance &self, Renderer &renderer,
+void TowerBehavior::renderSelf(const AllyInstance &self, Renderer &renderer,
                                double x, double y)
 {
     const double tx = 10.0, ts = 128.0, ty = 400.0 - ts / 2.0;

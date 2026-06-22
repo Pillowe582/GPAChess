@@ -156,7 +156,6 @@ public:
     /// @param color 颜色
     void queueSplash(const QString &text, double x, double y,
                      const QColor &color, int z = 1000);
-    const QColor &color;
 
     const std::vector<QueueItem> &getQueue() const { return m_queue; }
 
