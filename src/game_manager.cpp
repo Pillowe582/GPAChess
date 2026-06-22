@@ -62,7 +62,8 @@ void GameManager::initialize()
     {
         AllyConfig towerCfg;
         towerCfg.configId = -1; // 塔的唯一ID，防止被合并
-        towerCfg.name = "Tower";
+        towerCfg.id = "Tower";
+        towerCfg.name = "成绩单";
         towerCfg.baseHp = BASE_TOWER_HP * m_towerHpMultiplier;
         towerCfg.baseAtk = 100;
         towerCfg.baseDef = 100;

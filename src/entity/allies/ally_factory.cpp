@@ -2,7 +2,7 @@
 #include "state.h"
 #include "renderer.h"
 #include "allies/alpha/alpha_behavior.h"
-#include "allies/beta/beta_behavior.h"
+#include "allies/overwhelmed_bro/overwhelmed_bro_behavior.h"
 
 #include <QPainter>
 #include <QFont>
@@ -12,9 +12,9 @@
 void AllyBehavior::renderSelf(const AllyInstance &self, Renderer &renderer,
                               double x, double y)
 {
-    // 根据 self.name 选择对应的图片
+    // 根据 self.id 选择对应的图片
     QString texturePath;
-    texturePath = ":/texture/entity/" + self.name + ".png";
+    texturePath = ":/texture/entity/" + self.id + ".png";
 
     // 缩放比例
     double scale = 0.5;
@@ -60,7 +60,7 @@ void AllyBehavior::renderSelf(const AllyInstance &self, QPainter &p,
     p.setRenderHint(QPainter::Antialiasing);
 
     // 匹配同名图片资源
-    QString texturePath = ":/texture/entity/" + self.name + ".png";
+    QString texturePath = ":/texture/entity/" + self.id + ".png";
 
     // 加载并绘制棋子图片
     QPixmap pix(texturePath);
@@ -120,7 +120,7 @@ AllyBehavior *createAllyBehavior(int behaviorId)
     case 1:
         return new AlphaAlly();
     case 2:
-        return new BetaAlly();
+        return new OverwhelmedBroAlly();
     default:
         return new AlphaAlly();
     }

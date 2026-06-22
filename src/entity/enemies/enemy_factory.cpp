@@ -11,9 +11,9 @@ void EnemyBehavior::renderSelf(const EnemyInstance &self, Renderer &renderer,
                                double x, double y)
 {
 
-    // 根据 self.name 选择对应的图片
+    // 根据 self.id 选择对应的图片
     QString texturePath;
-    texturePath = ":/texture/entity/" + self.name + ".png";
+    texturePath = ":/texture/entity/" + self.id + ".png";
 
     double scale = 0.5; // 缩放比例
     // 绘制敌人图片

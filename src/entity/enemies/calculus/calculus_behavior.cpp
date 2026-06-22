@@ -14,7 +14,7 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
     // ====== 近战逻辑 ======
     m_cooldown = std::max(0.0, m_cooldown - dt);
 
-    // ---- 武器挥砍动画中 ----
+    // % 武器挥砍
     if (m_weapon.active)
     {
 
@@ -25,6 +25,7 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
         int currentRot = -1 * static_cast<int>(m_weapon.angle / (2.0 * 3.14159265));
         if (currentRot > m_weapon.rotationsDone)
         {
+            self.currentMp += 10;
             m_weapon.rotationsDone = currentRot;
             for (auto &ally : allies)
             {

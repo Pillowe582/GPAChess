@@ -72,6 +72,7 @@ class BaseConfig
 {
 public:
     int configId = 0;
+    QString id;
     QString name;
     int baseHp = 0, baseAtk = 0, baseDef = 0;
     float hpGrowthMultiplier = 1.0f, atkGrowthMultiplier = 1.0f;

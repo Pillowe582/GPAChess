@@ -38,20 +38,21 @@ void DatabaseManager::loadFromDb()
         hasChessData = true; // 只要能读到至少一行数据就认为表存在且不空
         AllyConfig allyConfigItem;
         allyConfigItem.configId = chessSqlQuery.value(0).toInt();
-        allyConfigItem.name = chessSqlQuery.value(1).toString();
-        allyConfigItem.cost = chessSqlQuery.value(2).toInt();
-        allyConfigItem.baseHp = chessSqlQuery.value(3).toInt();
-        allyConfigItem.baseAtk = chessSqlQuery.value(4).toInt();
-        allyConfigItem.baseDef = chessSqlQuery.value(5).toInt();
-        allyConfigItem.hpGrowthMultiplier = chessSqlQuery.value(6).toFloat();
-        allyConfigItem.atkGrowthMultiplier = chessSqlQuery.value(7).toFloat();
-        allyConfigItem.attackRange = chessSqlQuery.value(8).toInt();
-        allyConfigItem.baseAttackSpeed = chessSqlQuery.value(9).toFloat();
-        allyConfigItem.maxMp = chessSqlQuery.value(10).toInt();
-        allyConfigItem.speed = chessSqlQuery.value(11).toDouble();
-        allyConfigItem.description = chessSqlQuery.value(12).toString();
-        allyConfigItem.bonds = chessSqlQuery.value(13).toString().split(',', Qt::SkipEmptyParts);
-        allyConfigItem.behaviorId = chessSqlQuery.value(14).toInt();
+        allyConfigItem.id = chessSqlQuery.value(1).toString();
+        allyConfigItem.name = chessSqlQuery.value(2).toString();
+        allyConfigItem.cost = chessSqlQuery.value(3).toInt();
+        allyConfigItem.baseHp = chessSqlQuery.value(4).toInt();
+        allyConfigItem.baseAtk = chessSqlQuery.value(5).toInt();
+        allyConfigItem.baseDef = chessSqlQuery.value(6).toInt();
+        allyConfigItem.hpGrowthMultiplier = chessSqlQuery.value(7).toFloat();
+        allyConfigItem.atkGrowthMultiplier = chessSqlQuery.value(8).toFloat();
+        allyConfigItem.attackRange = chessSqlQuery.value(9).toInt();
+        allyConfigItem.baseAttackSpeed = chessSqlQuery.value(10).toFloat();
+        allyConfigItem.maxMp = chessSqlQuery.value(11).toInt();
+        allyConfigItem.speed = chessSqlQuery.value(12).toDouble();
+        allyConfigItem.description = chessSqlQuery.value(13).toString();
+        allyConfigItem.bonds = chessSqlQuery.value(14).toString().split(',', Qt::SkipEmptyParts);
+        allyConfigItem.behaviorId = chessSqlQuery.value(15).toInt();
         m_allyConfigs.push_back(allyConfigItem);
     }
     if (!hasChessData)
@@ -68,20 +69,21 @@ void DatabaseManager::loadFromDb()
         hasEnemyData = true; // 只要能读到至少一行数据就认为表存在且不空
         EnemyConfig enemyConfigItem;
         enemyConfigItem.configId = enemySqlQuery.value(0).toInt();
-        enemyConfigItem.name = enemySqlQuery.value(1).toString();
-        enemyConfigItem.baseHp = enemySqlQuery.value(2).toInt();
-        enemyConfigItem.baseAtk = enemySqlQuery.value(3).toInt();
-        enemyConfigItem.baseDef = enemySqlQuery.value(4).toInt();
-        enemyConfigItem.hpGrowthMultiplier = enemySqlQuery.value(5).toFloat();
-        enemyConfigItem.atkGrowthMultiplier = enemySqlQuery.value(6).toFloat();
-        enemyConfigItem.attackRange = enemySqlQuery.value(7).toInt();
-        enemyConfigItem.baseAttackSpeed = enemySqlQuery.value(8).toFloat();
-        enemyConfigItem.maxMp = enemySqlQuery.value(9).toInt();
-        enemyConfigItem.speed = enemySqlQuery.value(10).toDouble();
-        enemyConfigItem.description = enemySqlQuery.value(11).toString();
-        enemyConfigItem.baseGoldReward = enemySqlQuery.value(12).toInt();
-        enemyConfigItem.baseExpReward = enemySqlQuery.value(13).toInt();
-        enemyConfigItem.behaviorId = enemySqlQuery.value(14).toInt();
+        enemyConfigItem.id = enemySqlQuery.value(1).toString();
+        enemyConfigItem.name = enemySqlQuery.value(2).toString();
+        enemyConfigItem.baseHp = enemySqlQuery.value(3).toInt();
+        enemyConfigItem.baseAtk = enemySqlQuery.value(4).toInt();
+        enemyConfigItem.baseDef = enemySqlQuery.value(5).toInt();
+        enemyConfigItem.hpGrowthMultiplier = enemySqlQuery.value(6).toFloat();
+        enemyConfigItem.atkGrowthMultiplier = enemySqlQuery.value(7).toFloat();
+        enemyConfigItem.attackRange = enemySqlQuery.value(8).toInt();
+        enemyConfigItem.baseAttackSpeed = enemySqlQuery.value(9).toFloat();
+        enemyConfigItem.maxMp = enemySqlQuery.value(10).toInt();
+        enemyConfigItem.speed = enemySqlQuery.value(11).toDouble();
+        enemyConfigItem.description = enemySqlQuery.value(12).toString();
+        enemyConfigItem.baseGoldReward = enemySqlQuery.value(13).toInt();
+        enemyConfigItem.baseExpReward = enemySqlQuery.value(14).toInt();
+        enemyConfigItem.behaviorId = enemySqlQuery.value(15).toInt();
         m_enemyConfigs.push_back(enemyConfigItem);
     }
     if (!hasEnemyData)
