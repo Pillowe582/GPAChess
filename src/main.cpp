@@ -1,14 +1,47 @@
 #include "mainwindow.h"
 #include <QApplication>
+#include <fstream>
+#include <iostream>
+#include <QDateTime>
+#include <QString>
 
 int main(int argc, char *argv[])
 {
     qputenv("QT_ENABLE_HIGHDPI_SCALING", "0"); // 禁用高DPI缩放
-    QApplication app(argc, argv);
-    app.setWindowIcon(QIcon(":/assets/MainIcon.ico"));
+    try
+    {
+        QApplication app(argc, argv);
 
-    MainWindow window;
-    window.show();
-    int result = app.exec();
-    return result;
+        printf("App Path: %s\n", QCoreApplication::applicationDirPath().toStdString().c_str());
+        app.setWindowIcon(QIcon(":/assets/MainIcon.ico"));
+
+        MainWindow window;
+        window.show();
+        int result = app.exec();
+
+        system("pause");
+        return result;
+    }
+    catch (const std::exception &e)
+    {
+        QString logPath = QCoreApplication::applicationDirPath() + "/crash_" + QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss") + ".log";
+
+        std::ofstream logFile(logPath.toStdString(), std::ios::app);
+        logFile << "Error: " << e.what() << std::endl;
+        std::cout << "Error: " << e.what() << std::endl;
+
+        system("pause");
+        return -1;
+    }
+    catch (...)
+    {
+        QString logPath = QCoreApplication::applicationDirPath() + "/crash_" + QDateTime::currentDateTime().toString("yyyyMMdd_hhmmss") + ".log";
+
+        std::ofstream logFile(logPath.toStdString(), std::ios::app);
+        logFile << "Unknown error" << std::endl;
+        std::cout << "Unknown error" << std::endl;
+
+        system("pause");
+        return -1;
+    }
 }

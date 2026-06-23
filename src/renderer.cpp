@@ -9,6 +9,7 @@
 #include <QFont>
 #include <QPen>
 #include <QTimer>
+#include <QPointer>
 #include <QVariantAnimation>
 #include <QRandomGenerator>
 #include <algorithm>
@@ -164,22 +165,27 @@ void Renderer::flush()
                            double offsetX = (rng->generateDouble() - 0.5) * 30.0;
                            double offsetY = (rng->generateDouble() - 0.5) * 30.0;
 
-                           auto *text = m_scene->addSimpleText(payload.text);
+                           auto *text = m_scene->addText(payload.text);
                            text->setFont(payload.style.font);
-                           text->setBrush(payload.style.color);
+                           text->setDefaultTextColor(payload.style.color);
                            text->setPos(item.x - text->boundingRect().width() / 2.0 + offsetX,
                             item.y - 30.0 + offsetY);
                            text->setTransformOriginPoint(text->boundingRect().center());
                            text->setZValue(item.z);
                            text->setScale(4.0);
 
-                           auto *shadow = m_scene->addSimpleText(payload.text);
+                           auto *shadow = m_scene->addText(payload.text);
+
                            shadow->setFont(payload.style.font);
-                           shadow->setBrush(QColor("#000000").darker(160));
+                           shadow->setDefaultTextColor(QColor("#000000").darker(160));
                            shadow->setPos(text->pos() + QPointF(2, 2));
                            shadow->setTransformOriginPoint(shadow->boundingRect().center());
                            shadow->setZValue(item.z - 1);
                            shadow->setScale(4.0);
+
+                           // 用 QPointer 保护
+                           QPointer<QGraphicsTextItem> pText = text;
+                           QPointer<QGraphicsTextItem> pShadow = shadow;
 
                            auto *anim = new QVariantAnimation(this);
                            anim->setDuration(300);
@@ -187,21 +193,20 @@ void Renderer::flush()
                            anim->setEndValue(1.0);
                            anim->setEasingCurve(QEasingCurve::OutCubic);
                            connect(anim, &QVariantAnimation::valueChanged, this,
-                                   [text, shadow](const QVariant &val)
+                                   [pText, pShadow](const QVariant &val)
                                    {
                                        double s = val.toDouble();
-                                       text->setScale(s);
-                                       shadow->setScale(s);
+                                       if (pText) pText->setScale(s);
+                                       if (pShadow) pShadow->setScale(s);
                                    });
-                           connect(anim, &QVariantAnimation::finished, anim, &QObject::deleteLater);
                            anim->start(QAbstractAnimation::DeleteWhenStopped);
 
-                           QTimer::singleShot(800, this, [text, shadow]()
+                           QTimer::singleShot(800, this, [pText, pShadow]()
                                               {
-                if (text && text->scene()) text->scene()->removeItem(text);
-                if (shadow && shadow->scene()) shadow->scene()->removeItem(shadow);
-                delete text;
-                delete shadow; });
+                if (pText && pText->scene()) pText->scene()->removeItem(pText);
+                if (pShadow && pShadow->scene()) pShadow->scene()->removeItem(pShadow);
+                delete pText;
+                delete pShadow; });
                            return;
                        } },
                    item.data);

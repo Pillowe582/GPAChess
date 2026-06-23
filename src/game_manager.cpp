@@ -240,7 +240,10 @@ void GameManager::resetUnitsForNextRound()
         }
     }
     for (auto *e : m_gameEntities.enemies)
+    {
         delete e;
+        e = nullptr;
+    }
     m_gameEntities.enemies.clear();
     m_timeAccumulator = 0.0;
     print("All units reset for next round, formation preserved");
