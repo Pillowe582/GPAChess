@@ -37,16 +37,17 @@ struct Transform
     void reset();
 };
 
+/// @brief 伤害类型定义
 struct DamageType
 {
     enum Type
     {
-        Physical,
-        True,
-        Immune
+        Physical, //< 物理伤害
+        True,     // < 无视防御的真实伤害
+        Immune    // < 免疫伤害（不受任何伤害）
     };
     Type type = Physical;
-    QColor color;
+    QColor color; // < 伤害数字颜色
 };
 
 class Attribute
@@ -148,8 +149,17 @@ public:
     // ---- 生命 ----
     virtual void setDeath();
 
-    // ---- 造成伤害 ----
+    /// @brief 造成伤害，默认物理伤害
+    /// @param rawDamage 伤害数值
+    /// @param source 伤害来源
+    /// @return 实际造成的伤害数值
     virtual double dealDamage(double rawDamage, BaseEntity &source); // 默认为物理伤害
+
+    /// @brief 造成伤害，考虑伤害类型
+    /// @param rawDamage 伤害数值
+    /// @param source 伤害来源
+    /// @param type 伤害类型
+    /// @return 实际造成的伤害数值
     virtual double dealDamage(double rawDamage, BaseEntity &source, DamageType type);
 };
 
@@ -201,7 +211,7 @@ public:
 class PlayerAssets
 {
 public:
-    static constexpr int maxBattlefield = 5;
+    int maxBattlefield = 3;
     static constexpr int maxBench = 11;
 
     int gold = 0, exp = 0;

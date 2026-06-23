@@ -1,20 +1,19 @@
 #include "entity/ally_behavior.h"
 #include "state.h"
 #include "renderer.h"
-#include "allies/alpha/alpha_behavior.h"
+#include "allies/hachimi/hachimi_behavior.h"
 #include "allies/overwhelmed_bro/overwhelmed_bro_behavior.h"
 
 #include <QPainter>
 #include <QFont>
 #include <algorithm>
 
-/// Queue 渲染
+/// % Queue 渲染
 void AllyBehavior::renderSelf(const AllyInstance &self, Renderer &renderer,
                               double x, double y)
 {
     // 根据 self.id 选择对应的图片
-    QString texturePath;
-    texturePath = ":/texture/entity/" + self.id + ".png";
+    QString texturePath = getTexturePath(self);
 
     // 缩放比例
     double scale = 0.5;
@@ -50,6 +49,7 @@ void AllyBehavior::renderSelf(const AllyInstance &self, Renderer &renderer,
                        barX - 2.0, textY - 2.0, textStyle.setBold(1).setColor(QColor("#c2ffc9")), 30);
 }
 
+// % Qt 渲染
 /// @brief 由QPainter自动调用渲染，只用于在准备阶段绘制
 /// @param self 棋子
 /// @param p QPainter对象
@@ -59,11 +59,8 @@ void AllyBehavior::renderSelf(const AllyInstance &self, QPainter &p,
 {
     p.setRenderHint(QPainter::Antialiasing);
 
-    // 匹配同名图片资源
-    QString texturePath = ":/texture/entity/" + self.id + ".png";
-
     // 加载并绘制棋子图片
-    QPixmap pix(texturePath);
+    QPixmap pix(getTexturePath(self));
     if (!pix.isNull())
     {
         scale *= self.deployed ? 1.0 : 0.7;
@@ -118,10 +115,17 @@ AllyBehavior *createAllyBehavior(int behaviorId)
     switch (behaviorId)
     {
     case 1:
-        return new AlphaAlly();
+        return new HachimiAlly();
     case 2:
         return new OverwhelmedBroAlly();
     default:
-        return new AlphaAlly();
+        return new HachimiAlly();
     }
+}
+
+// % 默认材质路径获取
+QString AllyBehavior::getTexturePath(const AllyInstance &self) const
+{
+    // 根据 self.id 选择对应的图片
+    return ":/texture/entity/" + self.id + ".png";
 }

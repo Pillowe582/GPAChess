@@ -78,22 +78,7 @@ void OverwhelmedBroAlly::updatePos(double dt, AllyInstance &self, const std::vec
         return;
 
     // 找到最近的敌人
-    EnemyInstance *closestEnemy = nullptr;
-    double minDist = std::numeric_limits<double>::max();
-
-    for (auto &enemy : enemies)
-    {
-        if (!enemy->isAlive)
-            continue;
-        double dx = enemy->transform.x - self.transform.x;
-        double dy = enemy->transform.y - self.transform.y;
-        double dist = std::sqrt(dx * dx + dy * dy);
-        if (dist < minDist)
-        {
-            minDist = dist;
-            closestEnemy = enemy;
-        }
-    }
+    EnemyInstance *closestEnemy = findEnemy(enemies, self, 0);
 
     if (!closestEnemy)
         return;

@@ -404,7 +404,7 @@ void MainWindow::refreshSceneLabels()
     if (auto *lbl = findChild<QLabel *>("gpa"))
         lbl->setText(QString("GPA：%1").arg(m_gameManager->getAverageGpa(), 0, 'f', 2));
     if (auto *lbl = findChild<QLabel *>("onBattleGroundChessCount"))
-        lbl->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(PlayerAssets::maxBattlefield));
+        lbl->setText(QString("上场：%1/%2").arg(assets.deployedCount()).arg(assets.maxBattlefield));
     if (auto *lbl = findChild<QLabel *>("goldCount"))
         lbl->setText(QString("金币：%1").arg(assets.gold));
 

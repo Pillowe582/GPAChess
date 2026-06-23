@@ -3,6 +3,7 @@
 
 #include "entity/base_behavior.h"
 #include <vector>
+#include <QString>
 
 class AllyInstance;
 class EnemyInstance;
@@ -26,6 +27,11 @@ public:
     /// Paint 渲染 —— Qt paint 事件驱动，用 QPainter 直接绘制
     virtual void renderSelf(const AllyInstance &self, QPainter &p,
                             double radius);
+
+    /// @brief 获取材质，默认取同名材质
+    /// @param self 棋子实例
+    /// @return 材质路径
+    virtual QString getTexturePath(const AllyInstance &self) const;
 };
 
 AllyBehavior *createAllyBehavior(int behaviorId);

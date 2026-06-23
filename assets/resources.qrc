@@ -10,6 +10,9 @@
         <file>texture/entity/OverwhelmedBro.png</file>
         <file>texture/entity/Physics.png</file>
         <file>texture/entity/tower.png</file>
+        <file>texture/entity/hachimi/hachimi_dowhat.png</file>
+        <file>texture/entity/hachimi/hachimi_o.png</file>
+        <file>texture/entity/hachimi/hachimi_ha.png</file>
 
         <!-- Projectile textures -->
         <file>texture/projectile/bullet.png</file>

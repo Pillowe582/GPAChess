@@ -85,6 +85,7 @@ public:
     {
         m_pendingGold += gold;
         m_pendingExp += exp;
+        m_player.maxBattlefield = levelFromExp(m_player.exp) + 3;
     }
 
     QTimer *getTickTimer() const { return m_tickTimer; }
