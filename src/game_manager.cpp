@@ -207,6 +207,9 @@ void GameManager::nextRound()
     resetUnitsForNextRound();
     ++m_roundNumber;
 
+    // 根据玩家等级提升战场容量
+    m_player.maxBattlefield = levelFromExp(m_player.exp) + 3;
+
     // 如果达到最大回合数，则游戏结束
     if (m_roundNumber > m_maxRounds)
     {

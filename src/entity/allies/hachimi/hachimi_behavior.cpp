@@ -166,21 +166,27 @@ void HachimiAlly::performHaAttack(AllyInstance &self, GameManager &gameManager)
 {
     auto &enemies = gameManager.getGameEntities().enemies;
     Renderer &renderer = gameManager.getRenderer();
+    QRandomGenerator *rng = QRandomGenerator::global();
 
     const double range = 100.0;                  // 哈气范围半径
     double haDamage = self.atk.getFinal() * 1.5; // 哈气伤害倍率
 
     renderer.queueSplash("哈！", self.transform.x, self.transform.y, "#FF8C32");
-    for (auto *e : enemies)
+    for (auto *enemy : enemies)
     {
-        if (!e->isAlive)
+        if (!enemy->isAlive)
             continue;
-        double dx = e->transform.x - self.transform.x;
-        double dy = e->transform.y - self.transform.y;
+        double dx = enemy->transform.x - self.transform.x;
+        double dy = enemy->transform.y - self.transform.y;
         if (dx * dx + dy * dy <= range * range)
         {
-            e->dealDamage(haDamage, self,
-                          DamageType{DamageType::Physical, QColor("#FF8C32")});
+            enemy->dealDamage(haDamage, self,
+                              DamageType{DamageType::Physical, QColor("#FF8C32")});
+            if (!enemy->isAlive)
+            {
+                int gold = (rng->bounded(10) == 0) ? enemy->baseGoldReward : 0;
+                gameManager.addPendingRewards(gold, enemy->baseExpReward);
+            }
         }
     }
 }

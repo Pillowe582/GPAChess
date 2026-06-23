@@ -12,6 +12,7 @@ void CalculusEnemy::onStart(EnemyInstance &self)
     m_weapon.reset();
     m_differential.reset();
     m_differentialPen = QPen(QColor("#a4f9e7"), 4.0);
+
     int spd = self.baseAttackSpeed;
     m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
 }
@@ -51,7 +52,7 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
     // 3. MP 满 → 发动大招
     if (self.currentMp >= self.maxMp)
     {
-        m_differentialPen.setColor(QColor("#a4f9e7"));
+        m_differentialPen.setColor(QColor("#a4f9e7") ^ 1);
         m_differential.reset();
         findInfSupAlly(allies, self, m_differential.infX, m_differential.supX);
         m_differential.active = true;

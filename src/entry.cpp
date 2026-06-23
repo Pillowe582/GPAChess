@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "print.h"
+#include "state.h"
 #include "ui_entry.h"
 #include "logo_player.h"
 #include "game_manager.h"
@@ -250,10 +251,10 @@ void MainWindow::setupGameScene()
     deployPath.addRoundedRect(
         QRectF(deployLeft, deployTop, deployRight - deployLeft, deployBottom - deployTop),
         deployRadius, deployRadius);
-    auto *deployBorder = m_battleScene->addPath(deployPath,
-                                                QPen(QColor("#00ddff") ^ 0.7, 3.0),
-                                                QBrush(QColor("#00ddff") ^ 0.1));
-    deployBorder->setZValue(-5);
+    m_deployBorder = m_battleScene->addPath(deployPath,
+                                            QPen(QColor("#00ddff") ^ 0.7, 3.0),
+                                            QBrush(QColor("#00ddff") ^ 0.1));
+    m_deployBorder->setZValue(-5);
 
     // ============================================
     // % 备战席绘制
@@ -321,7 +322,13 @@ void MainWindow::refreshAllUnits()
 
     const auto &allyChesses = m_gameManager->getPlayerAssets().ownedChesses;
     QSet<int> currentUuids;
+
     const bool isPreparePhase = (m_gameManager->getCurrentPhase() == RoundPhase::Prepare);
+
+    if (m_deployBorder)
+    {
+        m_deployBorder->setVisible(isPreparePhase); // 仅在准备阶段显示部署区边框
+    }
 
     for (const auto &chess : allyChesses)
     {
