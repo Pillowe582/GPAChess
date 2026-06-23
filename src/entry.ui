@@ -51,7 +51,7 @@
        <number>0</number>
       </property>
       <property name="currentIndex">
-       <number>2</number>
+       <number>1</number>
       </property>
       <widget class="QWidget" name="entryLogo">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -127,7 +127,8 @@
            </font>
           </property>
           <property name="text">
-           <string>Menu</string>
+           <string>期末周大作战！！
+你vs期末周：谁会赢？！</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignTop</set>

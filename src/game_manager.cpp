@@ -239,6 +239,8 @@ void GameManager::resetUnitsForNextRound()
             unit->transform.y = unit->savedPosY;
         }
     }
+    for (auto *e : m_gameEntities.enemies)
+        delete e;
     m_gameEntities.enemies.clear();
     m_timeAccumulator = 0.0;
     print("All units reset for next round, formation preserved");
@@ -257,6 +259,8 @@ void GameManager::transitionPhase(RoundPhase newPhase)
 // % 敌方生成逻辑
 void GameManager::spawnEnemies(int roundNumber, int count, bool mandatory)
 {
+    for (auto *e : m_gameEntities.enemies)
+        delete e;
     m_gameEntities.enemies.clear();
 
     // 根据回合数决定敌方数量
