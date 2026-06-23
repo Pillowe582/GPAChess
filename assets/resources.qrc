@@ -18,6 +18,7 @@
         <file>texture/projectile/tropical_tea.png</file>
         <file>texture/projectile/tropical_tea_spout.png</file>
         <file>texture/projectile/luxine.png</file>
+        <file>texture/projectile/differential.png</file>
 
         <!-- Battleground textures -->
         <file>texture/battleground/sand.png</file>

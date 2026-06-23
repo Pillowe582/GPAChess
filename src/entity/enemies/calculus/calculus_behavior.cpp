@@ -220,6 +220,10 @@ void CalculusEnemy::updateDifferential(double dt, const std::vector<std::unique_
     double lineDuration = 0.3;
     int maxRounds = 4; // 最多4轮
 
+    // 显示微分算子
+    renderer.queueImage(":/texture/projectile/differential.png",
+                        self.transform.x + 20 * std::sin(2 * M_PI * 4 * m_differential.elapsedTime), self.transform.y,
+                        0.0, 1, Qt::AlignCenter, 90);
     // 清理过期线条
     double now = m_differential.elapsedTime;
     auto &active = m_differential.activeLines;
