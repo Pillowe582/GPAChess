@@ -93,7 +93,7 @@ private:
                            double dt, bool clockwise);
     void dealCurlDamage(std::vector<std::unique_ptr<AllyInstance>> &allies, EnemyInstance &self);
     void dealCurlHeal(std::vector<EnemyInstance *> &enemies, EnemyInstance &self, Renderer &renderer);
-    void renderCurlEffect(Renderer &renderer, EnemyInstance &self);
+    void renderCurlEffect(Renderer &renderer, EnemyInstance &self, bool clockwise);
 
     // 走位
     void updatePos(double dt, EnemyInstance &self,

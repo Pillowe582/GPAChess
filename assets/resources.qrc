@@ -26,7 +26,8 @@
         <file>texture/projectile/maxwell/maxwell_2.png</file>
         <file>texture/projectile/maxwell/maxwell_3.png</file>
         <file>texture/projectile/maxwell/maxwell_4.png</file>
-
+        <file>texture/projectile/maxwell/clockwise.png</file>
+        <file>texture/projectile/maxwell/anticlockwise.png</file>
 
         <!-- Battleground textures -->
         <file>texture/battleground/sand.png</file>

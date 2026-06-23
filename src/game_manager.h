@@ -96,6 +96,9 @@ public:
     void clampToArena(BaseEntity &entity, double margin = 100.0) const;
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
+    void applySeparation(std::vector<EnemyInstance *> &enemies,
+                         std::vector<std::unique_ptr<AllyInstance>> &allies,
+                         double dt);
 
     // 打开商店，以及商店关闭时的回调
     void openShop(MainWindow *mainWindow, void (MainWindow::*onClose)(int));

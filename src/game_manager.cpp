@@ -160,7 +160,8 @@ void GameManager::startRound(int roundNumber)
     }
 
     transitionPhase(RoundPhase::Combat);
-    spawnEnemies(m_roundNumber, m_roundInfos[m_roundNumber].creditWorth + 2, true);
+    spawnEnemies(m_roundNumber,
+                 std::ceil(m_roundInfos[m_roundNumber].creditWorth / 2 + 0.1) + 1, true);
 
     // ====== 通知所有 behavior：回合开始 ======
     for (const auto &u : m_player.ownedChesses)
@@ -261,12 +262,13 @@ void GameManager::spawnEnemies(int roundNumber, int count, bool mandatory)
 
     for (size_t i = 0; i < picked.size(); ++i)
     {
-        m_gameEntities.enemies.emplace_back(new EnemyInstance(picked[i], false, roundNumber, this));
+        m_gameEntities.enemies.emplace_back(new EnemyInstance(picked[i], false,
+                                                              roundNumber, this));
         EnemyInstance *e = m_gameEntities.enemies.back();
         e->isRequired = mandatory;
         e->behavior.reset(createEnemyBehavior(picked[i].behaviorId));
         e->transform.x = 1180.0 + (static_cast<double>(i % 3) * 140.0);
-        e->transform.y = 160.0 + (static_cast<double>(i / 3) * 180.0);
+        e->transform.y = 160.0 + (static_cast<double>(i / 3) * 360.0);
     }
 }
 
@@ -319,6 +321,71 @@ void GameManager::clampToArena(BaseEntity &entity, double margin) const
     entity.transform.y = std::clamp(entity.transform.y, margin, 800.0 - margin);
 }
 
+// % 碰撞箱排斥
+void GameManager::applySeparation(std::vector<EnemyInstance *> &enemies,
+                                  std::vector<std::unique_ptr<AllyInstance>> &allies,
+                                  double dt)
+{
+    const double threshold = 50.0;
+    const double force = 150.0;
+
+    auto applyOne = [&](BaseEntity &self, auto &others)
+    {
+        for (auto *other : others)
+        {
+            if (!other->isAlive)
+                continue;
+            double dx = other->transform.x - self.transform.x;
+            double dy = other->transform.y - self.transform.y;
+            double dist = std::hypot(dx, dy);
+            if (dist < threshold && dist > 0.001)
+            {
+                double push = (threshold - dist) / threshold * force * dt;
+                self.transform.x -= (dx / dist) * push;
+                self.transform.y -= (dy / dist) * push;
+            }
+        }
+    };
+
+    // 友军之间互相排斥
+    for (auto &ally : allies)
+    {
+        if (!ally->isAlive || !ally->deployed || ally->isTower)
+            continue;
+        std::vector<AllyInstance *> others;
+        for (auto &a : allies)
+            if (a.get() != ally.get() && a->isAlive && a->deployed)
+                others.push_back(a.get());
+        applyOne(*ally, others);
+    }
+
+    // 敌人之间互相排斥
+    for (auto *e : enemies)
+    {
+        if (!e->isAlive)
+            continue;
+        applyOne(*e, enemies);
+    }
+
+    // 敌人 <-> 友军互相排斥
+    for (auto *e : enemies)
+    {
+        if (!e->isAlive)
+            continue;
+        std::vector<AllyInstance *> deployAllies;
+        for (auto &a : allies)
+            if (a->isAlive && a->deployed)
+                deployAllies.push_back(a.get());
+        applyOne(*e, deployAllies);
+    }
+    for (auto &ally : allies)
+    {
+        if (!ally->isAlive || !ally->deployed || ally->isTower)
+            continue;
+        applyOne(*ally, enemies);
+    }
+}
+
 // % 攻击循环
 
 /// @brief tick 时调用，通知所有单位的行为逻辑
@@ -338,6 +405,9 @@ void GameManager::tickBehaviors(double deltaSeconds)
     for (auto &enemy : m_gameEntities.enemies)
         if (enemy->isAlive && enemy->behavior)
             enemy->behavior->tick(deltaSeconds, *enemy, *this);
+
+    // 全局排斥：所有单位之间距离小于50时互相推开
+    applySeparation(m_gameEntities.enemies, m_player.ownedChesses, deltaSeconds);
 
     // 边界限制：所有存活且已部署的单位
     for (auto &ally : m_player.ownedChesses)

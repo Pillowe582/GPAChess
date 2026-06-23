@@ -11,7 +11,7 @@ void CalculusEnemy::onStart(EnemyInstance &self)
 {
     m_weapon.reset();
     m_differential.reset();
-    m_differentialPen = QPen(QColor("#a4f9e7"), 4.0);
+    m_differentialPen = QPen(QColor("#00bd94") ^ 1, 4.0);
 
     int spd = self.baseAttackSpeed;
     m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
@@ -52,7 +52,7 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
     // 3. MP 满 → 发动大招
     if (self.currentMp >= self.maxMp)
     {
-        m_differentialPen.setColor(QColor("#a4f9e7") ^ 1);
+        m_differentialPen.setColor(QColor("#00bd94") ^ 1);
         m_differential.reset();
         findInfSupAlly(allies, self, m_differential.infX, m_differential.supX);
         m_differential.active = true;
@@ -99,7 +99,7 @@ void CalculusEnemy::updateInteger(double dt,
             if (std::sqrt(dx * dx + dy * dy) < 200.0)
             {
                 int dmg = self.atk.getFinal();
-                ally->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00ffc3")});
+                ally->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00bd94")});
             }
         }
     }
@@ -272,10 +272,10 @@ void CalculusEnemy::updateDifferential(double dt, const std::vector<std::unique_
                 if (!target->isAlive || !target->deployed)
                     continue;
                 double x = target->transform.x;
-                if (std::abs(x - linePos) < 32) // 区域半宽
+                if (std::abs(x - linePos) < 32)
                 {
                     int dmg = m_differential.damage / (totalLines - 1);
-                    target->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00ffc8")});
+                    target->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00bd94")});
                 }
             }
 

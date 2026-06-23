@@ -264,6 +264,8 @@ void PhysicsEnemy::updateCurlField(double dt, std::vector<std::unique_ptr<AllyIn
             dealCurlDamage(allies, self);
             m_curlField.firstHalfDamageDealt = true;
         }
+        // 特效
+        renderCurlEffect(renderer, self, true);
     }
     else if (t <= m_curlField.duration)
     {
@@ -277,15 +279,14 @@ void PhysicsEnemy::updateCurlField(double dt, std::vector<std::unique_ptr<AllyIn
             dealCurlHeal(enemies, self, renderer);
             m_curlField.secondHalfHealDealt = true;
         }
+        // 特效
+        renderCurlEffect(renderer, self, false);
     }
     else
     {
         // 结束
         m_curlField.reset();
     }
-
-    // 特效
-    renderCurlEffect(renderer, self);
 }
 // t ∈ [0, 1]
 // InOutCubic 的导数
@@ -385,7 +386,7 @@ void PhysicsEnemy::dealCurlHeal(std::vector<EnemyInstance *> &enemies,
                                 EnemyInstance &self, Renderer &renderer)
 {
     const double maxRadius = m_curlField.radius;
-    double baseHeal = self.atk.getFinal(); // 治疗系数
+    double baseHeal = self.atk.getFinal() * 0.5; // 治疗倍率
 
     for (auto &enemy : enemies)
     {
@@ -401,6 +402,8 @@ void PhysicsEnemy::dealCurlHeal(std::vector<EnemyInstance *> &enemies,
             // 越靠近中心治疗效果越好
             double healMultiplier = 1.0 + (1.0 - dist / maxRadius) * 0.5; // 1.0 ~ 1.5 倍
             enemy->currentHp += baseHeal * healMultiplier;
+            if (enemy->currentHp > enemy->getMaxHp())
+                enemy->currentHp = enemy->getMaxHp();
             renderer.queueSplash("+" + QString::number(std::ceil(baseHeal * healMultiplier)),
                                  enemy->transform.x, enemy->transform.y,
                                  Qt::green, 200);
@@ -409,21 +412,24 @@ void PhysicsEnemy::dealCurlHeal(std::vector<EnemyInstance *> &enemies,
 }
 
 // 渲染
-void PhysicsEnemy::renderCurlEffect(Renderer &renderer, EnemyInstance &self)
+void PhysicsEnemy::renderCurlEffect(Renderer &renderer, EnemyInstance &self, bool clockwise)
 {
 
     double t = m_curlField.timer;
     double halfDuration = m_curlField.duration / 2.0;
 
     // 主体光环：高速旋转
-    double ringRotation = t * 720.0; // 每秒转两圈
-    double ringScale = 2.0;          // 1000px 半径对应 scale = 1000/128 ≈ 7.8，这里用 queueImage 的 scale 参数放大
+    double ringRotation = t * 45.0;               // 每秒转45度
+    double ringScale = m_curlField.radius / 64.0; // 半径对应 scale
 
-    // 实际 scale = 期望半径 / 纹理默认半径(64px)
-    double scale = m_curlField.radius / 64.0;
-
-    renderer.queueCircle(self.transform.x, self.transform.y, m_curlField.radius,
-                         QPen(QColor("#8844ff"), 4), QBrush(Qt::NoBrush), 90);
+    if (clockwise)
+        renderer.queueImage(":/texture/projectile/maxwell/anticlockwise.png",
+                            self.transform.x, self.transform.y,
+                            -ringRotation, ringScale, Qt::AlignCenter, 0);
+    else
+        renderer.queueImage(":/texture/projectile/maxwell/clockwise.png",
+                            self.transform.x, self.transform.y,
+                            ringRotation, ringScale, Qt::AlignCenter, 0);
 }
 
 // % 走位
