@@ -119,7 +119,9 @@ void GameManager::generateRoundInfos(std::vector<RoundInfo> &roundInfos, int max
         RoundInfo info;
         info.roundNumber = i;
         info.creditWorth = generateRoundCredit(i);
-        info.electiveEnemies = 3 + (i > 5 ? 1 : 0); // 可选敌人数量随回合增加
+
+        // 可选敌人数量为 3 + (学分值/2) + (回合数/3)
+        info.electiveEnemies = std::ceil(3 + info.creditWorth / 2 + i / 3);
         roundInfos.push_back(info);
     }
 }
@@ -475,15 +477,22 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
             if (anyAllyAlive)
             {
                 // 生成选修敌人
-                --m_electiveEnemiesNotSpawned;
                 print(QString("生成几只选修敌人"));
-                int maxElectiveCount = 2;
-                int electiveCount = std::min(m_electiveEnemiesNotSpawned, maxElectiveCount);
+                // 这一波最多生成几个
+                int maxWaveElectiveCount = std::ceil(m_roundInfos[m_roundNumber].creditWorth / 2.0);
+
+                // 实际能生成的余量
+                int electiveCount = std::min(m_electiveEnemiesNotSpawned, maxWaveElectiveCount);
+
+                // 扣除本波生成的，波次++
+                m_electiveEnemiesNotSpawned -= electiveCount;
+                m_electiveEnemiesWave++;
+
                 auto picked = pickRandomEnemies(m_roundNumber, electiveCount);
                 for (auto each : picked)
                 {
-                    each.hpGrowthMultiplier += 1;
-                    each.atkGrowthMultiplier += 1;
+                    each.hpGrowthMultiplier += m_electiveEnemiesWave;
+                    each.atkGrowthMultiplier += m_electiveEnemiesWave;
                 }
                 spawnEnemies(m_roundNumber, electiveCount, false);
 
@@ -493,8 +502,9 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
             }
         }
 
-        // 所有敌人都消灭了，胜利
-        print("所有敌人已被消灭！");
+        // 所有选修敌人也都消灭了，胜利
+        print("所有选修敌人已被消灭！");
+        m_electiveEnemiesWave = 0;
         outVictory = true;
         return true;
     }

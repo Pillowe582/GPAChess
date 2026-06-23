@@ -240,6 +240,7 @@ private:
 
     // Elective 敌人生成追踪
     int m_electiveEnemiesNotSpawned = 0;    // 未生成的 elective 敌人数量
+    int m_electiveEnemiesWave = 0;          // 当前 elective 敌人波次
     bool m_mandatoryEnemiesCleared = false; // 必修敌人是否已清除
 
     // 最大回合数
