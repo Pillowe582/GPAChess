@@ -216,6 +216,12 @@ void HachimiAlly::updatePos(double dt, AllyInstance &self, const std::vector<Ene
             self.transform.x += dirX * moveSpeed * dt;
             self.transform.y += dirY * moveSpeed * dt;
         }
+        else if (dist < 75.0)
+        {
+            // 远离到100px范围
+            self.transform.x -= dirX * moveSpeed * dt;
+            self.transform.y -= dirY * moveSpeed * dt;
+        }
         else
         {
             // 绕圈

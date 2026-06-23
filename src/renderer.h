@@ -88,7 +88,8 @@ struct ImagePayload
 struct CirclePayload
 {
     double radius;
-    QColor color;
+    QPen penEdge;
+    QBrush brush;
 };
 
 struct RectPayload
@@ -159,9 +160,10 @@ public:
                     double rotation = 0.0, double scale = 1.0,
                     Qt::Alignment align = Qt::AlignCenter, int z = 100);
 
-    /// 排队绘制实心圆
+    /// 排队绘制圆
+    /// @param pen 笔刷
     void queueCircle(double x, double y, double r,
-                     const QColor &color, int z = 100);
+                     const QPen &penEdge, const QBrush &brush, int z = 100);
 
     /// 排队绘制实心矩形（支持旋转和居中）
     /// @param centered  true=以(x,y)为中心点; false=(x,y)为左上角

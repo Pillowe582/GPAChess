@@ -69,7 +69,7 @@ void Renderer::flush()
                            auto *c = m_scene->addEllipse(
                                item.x - payload.radius, item.y - payload.radius,
                                payload.radius * 2.0, payload.radius * 2.0,
-                               QPen(Qt::NoPen), QBrush(payload.color));
+                               payload.penEdge, payload.brush);
                            c->setData(0, -1);// 标记为临时项，自动删除
                            c->setZValue(item.z);
                        }
@@ -239,13 +239,13 @@ void Renderer::queueImage(const QString &path, double x, double y,
 }
 
 void Renderer::queueCircle(double x, double y, double r,
-                           const QColor &color, int z)
+                           const QPen &penEdge, const QBrush &brush, int z)
 {
     QueueItem q;
     q.x = x;
     q.y = y;
     q.z = z;
-    q.data = CirclePayload{r, color};
+    q.data = CirclePayload{r, penEdge, brush};
     m_queue.push_back(q);
 }
 

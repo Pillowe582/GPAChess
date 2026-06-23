@@ -68,6 +68,7 @@ public:
     PlayerAssets &getPlayerAssets() { return m_player; }
     const PlayerAssets &getPlayerAssets() const { return m_player; }
     const GameEntities &getGameEntities() const { return m_gameEntities; }
+    GameEntities &getGameEntities() { return m_gameEntities; }
     Renderer &getRenderer() const { return *m_renderer; }
 
     const std::vector<RoundInfo> &getRoundInfos() const { return m_roundInfos; }
@@ -92,7 +93,7 @@ public:
 
     // % 工具方法
     /// 限制实体位置在画布内（保留 margin 边距）
-    void clampToArena(BaseEntity &entity, double margin = 20.0) const;
+    void clampToArena(BaseEntity &entity, double margin = 100.0) const;
     /// 检查并执行升星合并（3个同种同星→1个高星）
     void checkAndMergeStars();
 

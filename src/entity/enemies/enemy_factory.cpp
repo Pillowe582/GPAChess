@@ -2,7 +2,7 @@
 #include "state.h"
 #include "renderer.h"
 #include "enemies/calculus/calculus_behavior.h"
-#include "enemies/beta/beta_behavior.h"
+#include "enemies/physics/physics_behavior.h"
 
 #include <algorithm>
 
@@ -50,7 +50,7 @@ EnemyBehavior *createEnemyBehavior(int behaviorId)
     case 1:
         return new CalculusEnemy();
     case 2:
-        return new BetaEnemy();
+        return new PhysicsEnemy();
     default:
         return new CalculusEnemy();
     }

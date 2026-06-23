@@ -22,6 +22,11 @@
         <file>texture/projectile/tropical_tea_spout.png</file>
         <file>texture/projectile/luxine.png</file>
         <file>texture/projectile/differential.png</file>
+        <file>texture/projectile/maxwell/maxwell_1.png</file>
+        <file>texture/projectile/maxwell/maxwell_2.png</file>
+        <file>texture/projectile/maxwell/maxwell_3.png</file>
+        <file>texture/projectile/maxwell/maxwell_4.png</file>
+
 
         <!-- Battleground textures -->
         <file>texture/battleground/sand.png</file>
