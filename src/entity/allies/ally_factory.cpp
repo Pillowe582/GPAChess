@@ -41,7 +41,7 @@ void AllyBehavior::renderSelf(const AllyInstance &self, Renderer &renderer,
     renderer.queueRect(barX, mpBarY, barW, mpBarH, QColor("#7b7b7b"), 20);
     renderer.queueRect(barX, mpBarY, barW * mpRatio, mpBarH, QColor("#FFD700"), 21);
 
-    double textY = mpBarY + mpBarH + 4.0;
+    double textY = mpBarY + mpBarH;
     TextStyle textStyle;
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
                        barX, textY, textStyle.setBold(1).setColor(QColor("#000000") ^ 0.7), 29);

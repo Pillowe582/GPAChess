@@ -35,12 +35,12 @@ void EnemyBehavior::renderSelf(const EnemyInstance &self, Renderer &renderer,
     renderer.queueRect(barX, mpBarY, barW, mpBarH, QColor("#7b7b7b"), 20);
     renderer.queueRect(barX, mpBarY, barW * mpRatio, mpBarH, QColor("#FFD700"), 21);
 
-    double textY = mpBarY + mpBarH + 4.0;
+    double textY = mpBarY + mpBarH;
     TextStyle textStyle;
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX, textY, textStyle.setColor(QColor("#000000") ^ 0.7), 29);
+                       barX, textY, textStyle.setBold(1).setColor(QColor("#000000") ^ 0.7), 29);
     renderer.queueText(QString("%2/%3").arg(std::ceil(self.currentHp)).arg(maxHp),
-                       barX - 2.0, textY - 2.0, textStyle.setColor(QColor("#ffc6c6")), 30);
+                       barX - 2.0, textY - 2.0, textStyle.setBold(1).setColor(QColor("#ffc6c6")), 30);
 }
 
 EnemyBehavior *createEnemyBehavior(int behaviorId)

@@ -488,13 +488,17 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
                 m_electiveEnemiesNotSpawned -= electiveCount;
                 m_electiveEnemiesWave++;
 
-                auto picked = pickRandomEnemies(m_roundNumber, electiveCount);
-                for (auto each : picked)
-                {
-                    each.hpGrowthMultiplier += m_electiveEnemiesWave;
-                    each.atkGrowthMultiplier += m_electiveEnemiesWave;
-                }
                 spawnEnemies(m_roundNumber, electiveCount, false);
+
+                // 调整选修敌人属性，使其更强
+                for (auto *e : m_gameEntities.enemies)
+                {
+                    if (!e->isAlive || e->isRequired)
+                        continue;                                       // 跳过必修敌人
+                    e->atk.percentBonus += m_electiveEnemiesWave / 3;   // 选修敌人每波攻击成长增加
+                    e->maxHp.percentBonus += m_electiveEnemiesWave / 3; // 选修敌人每波生命成长增加
+                    e->currentHp = e->maxHp.getFinal();
+                }
 
                 // 不结束战斗，继续战斗
                 outVictory = false;

@@ -360,7 +360,7 @@ void PhysicsEnemy::dealCurlDamage(std::vector<std::unique_ptr<AllyInstance>> &al
                                   EnemyInstance &self)
 {
     const double maxRadius = m_curlField.radius;
-    double baseDamage = self.atk.getFinal() * 0.8; // 伤害系数
+    double baseDamage = self.atk.getFinal() * 5; // 伤害系数
 
     for (auto &ally : allies)
     {
@@ -404,7 +404,7 @@ void PhysicsEnemy::dealCurlHeal(std::vector<EnemyInstance *> &enemies,
             enemy->currentHp += baseHeal * healMultiplier;
             if (enemy->currentHp > enemy->getMaxHp())
                 enemy->currentHp = enemy->getMaxHp();
-            renderer.queueSplash("+" + QString::number(std::ceil(baseHeal * healMultiplier)),
+            renderer.queueSplash("+" + QString::number(std::floor(baseHeal * healMultiplier)),
                                  enemy->transform.x, enemy->transform.y,
                                  Qt::green, 200);
         }
