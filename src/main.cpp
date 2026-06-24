@@ -13,13 +13,12 @@ int main(int argc, char *argv[])
         QApplication app(argc, argv);
 
         printf("App Path: %s\n", QCoreApplication::applicationDirPath().toStdString().c_str());
-        app.setWindowIcon(QIcon(":/assets/MainIcon.ico"));
+        app.setWindowIcon(QIcon(":/assets/icon.ico")); 
 
         MainWindow window;
         window.show();
         int result = app.exec();
 
-        system("pause");
         return result;
     }
     catch (const std::exception &e)
@@ -30,7 +29,6 @@ int main(int argc, char *argv[])
         logFile << "Error: " << e.what() << std::endl;
         std::cout << "Error: " << e.what() << std::endl;
 
-        system("pause");
         return -1;
     }
     catch (...)
@@ -41,7 +39,6 @@ int main(int argc, char *argv[])
         logFile << "Unknown error" << std::endl;
         std::cout << "Unknown error" << std::endl;
 
-        system("pause");
         return -1;
     }
 }

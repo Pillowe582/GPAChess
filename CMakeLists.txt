@@ -14,14 +14,14 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets Sql Network)
 
 # 设置自动搜索资源文件的路径
 set(AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/assets")
-set(WIN_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/assets/app.rc") # 这是打包出来的可执行文件图标（记得换）
+set(WIN_RESOURCES "${CMAKE_CURRENT_SOURCE_DIR}/assets/app.rc") # 这是打包出来的可执行文件图标
 
 
 file(GLOB_RECURSE SRC_FILES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 file(GLOB_RECURSE HEADER_FILES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h")
 
-add_executable(${PROJECT_NAME} #WIN32 # WIN32 表示没有控制台窗口
+add_executable(${PROJECT_NAME} WIN32 # WIN32 表示没有控制台窗口
     ${SRC_FILES}
     ${HEADER_FILES}
     ${WIN_RESOURCES}
