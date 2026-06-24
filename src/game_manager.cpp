@@ -1,6 +1,7 @@
 #include "game_manager.h"
 #include "mainwindow.h"
 #include "shop_window.h"
+#include "registration.h"
 #include "database_manager.h"
 #include "print.h"
 #include "ally_behavior.h"
@@ -50,9 +51,6 @@ void GameManager::initialize()
     m_phase = RoundPhase::Prepare;
     m_gameEntities.enemies.clear();
     m_enemyConfigs.clear();
-
-    // 生成本局所有回合信息
-    generateRoundInfos(m_roundInfos, m_maxRounds);
 
     // 重置玩家资源
     m_player.gold = 10;
@@ -123,6 +121,7 @@ void GameManager::generateRoundInfos(std::vector<RoundInfo> &roundInfos, int max
         // 可选敌人数量为 3 + (学分值/2) + (回合数/3)
         info.electiveEnemies = std::ceil(3 + info.creditWorth / 2 + i / 3);
         roundInfos.push_back(info);
+        print(QString("第%1回合：%2cr").arg(i).arg(info.creditWorth));
     }
 }
 /// @brief 随机出一个回合学分值（1~5cr）
@@ -141,7 +140,7 @@ void GameManager::startRound(int roundNumber)
 {
     m_roundNumber = roundNumber;
 
-    m_tower->baseDef = roundNumber * 300; // 塔防御随回合增加
+    m_tower->baseHp = BASE_TOWER_HP * roundNumber; // 塔生命随回合增加
     // 快照回合开始时的金币/经验
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
@@ -523,6 +522,22 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
     outVictory = false;
     return false;
 }
+// ============================================================================
+// % 选课界面
+// ============================================================================
+void GameManager::showRegistrationWindow(MainWindow *mainWindow, GameManager *gm)
+{
+    if (!mainWindow || !gm)
+        return;
+
+    if (!m_registrationWindow)
+    {
+        m_registrationWindow = new RegistrationWindow(mainWindow, gm);
+    }
+
+    m_registrationWindow->exec();
+}
+
 // % 商店逻辑
 
 /// @brief 打开商店窗口

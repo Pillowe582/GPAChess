@@ -48,8 +48,10 @@ void OverwhelmedBroAlly::tick(double dt, BaseEntity &baseSelf, GameManager &game
     {
         // 喷射热带风味冰红茶
         EnemyInstance *target = findEnemy(enemies, self, 0);
+        if (!target)
+            return;
         double distance = std::sqrt(std::pow(target->transform.x - self.transform.x, 2) + std::pow(target->transform.y - self.transform.y, 2));
-        if (!target || distance > 300) // 目标不在范围内
+        if (distance > 300) // 目标不在范围内
             return;
         m_teaSpout.x = self.transform.x;
         m_teaSpout.y = self.transform.y;

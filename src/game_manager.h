@@ -15,6 +15,7 @@ class DatabaseManager;
 class Renderer;
 class TowerBehavior;
 class ShopWindow;
+class RegistrationWindow;
 class MainWindow;
 
 #include <memory> // for unique_ptr
@@ -73,6 +74,11 @@ public:
 
     const std::vector<RoundInfo> &getRoundInfos() const { return m_roundInfos; }
 
+    std::vector<RoundInfo> &getRoundInfos() { return m_roundInfos; };
+
+    const int getMaxRounds() const { return m_maxRounds; }
+    int &getMaxRounds() { return m_maxRounds; }
+
     /// 本回合获得的金币/经验（与回合开始前快照对比）
     int getRoundGoldEarned() const { return m_pendingGold; }
     int getRoundExpEarned() const { return m_pendingExp; }
@@ -106,6 +112,11 @@ public:
     {
         openShop(nullptr, nullptr);
     }
+    // 生成轮次信息
+    void generateRoundInfos(std::vector<RoundInfo> &out, int maxRounds);
+
+    // 打开选课界面
+    void showRegistrationWindow(MainWindow *mainWindow, GameManager *gm);
 
     // 检查必修敌人是否已清除
     bool isMandatoryEnemiesCleared() const { return m_mandatoryEnemiesCleared; }
@@ -124,7 +135,6 @@ public:
 
     /// 本回合学分值（随机）
     int generateRoundCredit(int round);
-    int getMaxRounds() const { return m_maxRounds; }
 
     // 本回合学分绩 = (塔血百分比 × 4.0) 满分4.0
     double getRoundGpa() const
@@ -215,7 +225,6 @@ private:
     void tickBehaviors(double deltaSeconds);
     bool checkCombatEndConditions(bool &outVictory);
     void resetUnitsForNextRound();
-    void generateRoundInfos(std::vector<RoundInfo> &out, int maxRounds); // 生成每轮的学分值和敌人数量
 
 private:
     QTimer *m_tickTimer;
@@ -252,6 +261,7 @@ private:
     double m_timeAccumulator;
     quint32 m_gameSeed = 12345;
     ShopWindow *m_shopWindow = nullptr;
+    RegistrationWindow *m_registrationWindow = nullptr;
     QRandomGenerator m_rng{12345};
     DatabaseManager *m_database = nullptr;
     Renderer *m_renderer = nullptr; // 渲染器（由 MainWindow 注入）

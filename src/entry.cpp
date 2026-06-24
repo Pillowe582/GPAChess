@@ -78,8 +78,7 @@ void MainWindow::initUi()
 /// @brief 首次点击"开始游戏"触发 —— 创建核心对象并绑定所有信号槽
 void MainWindow::initGame()
 {
-    print("启动！！");
-    switchScene(Scene::MainGame);
+    print("开始选课");
     if (m_gameManager)
     {
         delete m_gameManager;
@@ -94,6 +93,7 @@ void MainWindow::initGame()
 
     // 创建游戏主控
     m_gameManager = new GameManager(this);
+    m_gameManager->showRegistrationWindow(this, m_gameManager); // 进入选课界面
     m_gameManager->initialize();
 
     // 创建渲染器并注入
@@ -131,6 +131,8 @@ void MainWindow::initGame()
     connect(ui->openShopButton, &QPushButton::clicked,
             this, &MainWindow::onShopOpenClicked);
 
+    print("启动！！");
+    switchScene(Scene::MainGame);
     refreshScene(RefreshAll);
 }
 
@@ -408,7 +410,7 @@ void MainWindow::refreshSceneLabels()
         return;
 
     int round = m_gameManager->getRoundNumber();
-    int credit = m_gameManager->getRoundInfos()[round].creditWorth;
+    int credit = m_gameManager->getRoundInfos()[round - 1].creditWorth;
     const auto &assets = m_gameManager->getPlayerAssets();
 
     if (auto *lbl = findChild<QLabel *>("roundCount"))
@@ -691,7 +693,7 @@ void MainWindow::showRoundResult(bool victory)
                     .arg(goldEarned)
                     .arg(expEarned)
                     .arg(gpa, 0, 'f', 2)
-                    .arg(m_gameManager->getRoundInfos()[m_gameManager->getRoundNumber()].creditWorth));
+                    .arg(m_gameManager->getRoundInfos()[m_gameManager->getRoundNumber() - 1].creditWorth));
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
 
