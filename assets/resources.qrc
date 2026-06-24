@@ -31,5 +31,6 @@
 
         <!-- Battleground textures -->
         <file>texture/battleground/sand.png</file>
+        <file>texture/menu/menu.png</file>
     </qresource>
 </RCC>

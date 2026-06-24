@@ -148,7 +148,7 @@ void GameManager::startRound(int roundNumber)
     m_timeAccumulator = 0.0;
 
     // 重置 elective 追踪状态
-    m_electiveEnemiesNotSpawned = m_roundInfos[m_roundNumber].electiveEnemies;
+    m_electiveEnemiesNotSpawned = m_roundInfos[m_roundNumber - 1].electiveEnemies;
     m_mandatoryEnemiesCleared = false;
 
     // 快照所有已部署单位的战场位置，用于回合结束后复位
@@ -163,7 +163,7 @@ void GameManager::startRound(int roundNumber)
 
     transitionPhase(RoundPhase::Combat);
     spawnEnemies(m_roundNumber,
-                 std::ceil(m_roundInfos[m_roundNumber].creditWorth / 2 + 0.1) + 1, true);
+                 std::ceil(m_roundInfos[m_roundNumber - 1].creditWorth / 2 + 0.1) + 1, true);
 
     // ====== 通知所有 behavior：回合开始 ======
     for (const auto &u : m_player.ownedChesses)
@@ -198,7 +198,7 @@ void GameManager::nextRound()
 
     // 计算本回合学分绩，并更新加权平均学分绩
     double roundGpa = getRoundGpa();
-    int credit = m_roundInfos[m_roundNumber].creditWorth;
+    int credit = m_roundInfos[m_roundNumber - 1].creditWorth;
     m_weightedGpaSum += roundGpa * credit;
     m_totalCredits += credit;
 
@@ -218,7 +218,7 @@ void GameManager::nextRound()
     {
         double finalGpa = m_totalCredits > 0 ? m_weightedGpaSum / m_totalCredits : 0.0;
         emit gameOver(finalGpa);
-        print(QString("Game over! Final GPA: %1").arg(finalGpa, 0, 'f', 2));
+        print(QString("最后一科已考完！GPA: %1").arg(finalGpa, 0, 'f', 2));
         return;
     }
 
@@ -486,7 +486,7 @@ bool GameManager::checkCombatEndConditions(bool &outVictory)
                 // 生成选修敌人
                 print(QString("生成几只选修敌人"));
                 // 这一波最多生成几个
-                int maxWaveElectiveCount = std::ceil(m_roundInfos[m_roundNumber].creditWorth / 2.0);
+                int maxWaveElectiveCount = std::ceil(m_roundInfos[m_roundNumber - 1].creditWorth / 2.0);
 
                 // 实际能生成的余量
                 int electiveCount = std::min(m_electiveEnemiesNotSpawned, maxWaveElectiveCount);

@@ -75,13 +75,13 @@ void ShopWindow::onShopChessItemClicked(const QModelIndex &index)
     const auto &cfg = m_currentShopItems[row];
     ui->descriptionLabel->setText(cfg.description);
     ui->propertyLabel->setText(
-        QString("HP:%1  ATK:%2  DEF:%3\n攻速:%4  范围:%5\n羁绊:%6")
+        QString("HP:%1  ATK:%2  DEF:%3\n攻速:%4")
             .arg(cfg.baseHp)
             .arg(cfg.baseAtk)
             .arg(cfg.baseDef)
-            .arg(cfg.baseAttackSpeed)
-            .arg(cfg.attackRange)
-            .arg(cfg.bonds.join(", ")));
+            .arg(cfg.baseAttackSpeed));
+    // .arg(cfg.attackRange)
+    // .arg(cfg.bonds.join(", ")));
     ui->purchaseButton->setEnabled(true);
 }
 

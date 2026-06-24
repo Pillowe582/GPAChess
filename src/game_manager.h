@@ -74,8 +74,8 @@ public:
     const std::vector<RoundInfo> &getRoundInfos() const { return m_roundInfos; }
 
     /// 本回合获得的金币/经验（与回合开始前快照对比）
-    int getRoundGoldEarned() const { return m_player.gold - m_roundStartGold; }
-    int getRoundExpEarned() const { return m_player.exp - m_roundStartExp; }
+    int getRoundGoldEarned() const { return m_pendingGold; }
+    int getRoundExpEarned() const { return m_pendingExp; }
 
     // % Setters
 

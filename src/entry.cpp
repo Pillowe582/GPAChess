@@ -52,10 +52,16 @@ MainWindow::MainWindow(QWidget *parent)
     connect(logoPlayer, &LogoPlayer::logoPlayFinished, this, [this]()
             { this->switchScene(Scene::EntryMenu); });
 
-    // —— 入口界面按钮 ——
+    // 菜单界面
+    QPixmap menuBackgroundPixmap(":/texture/menu/menu.png");
+    ui->menuBg->setPixmap(menuBackgroundPixmap);
     connect(ui->startGameButton, &QPushButton::clicked, this, &MainWindow::initGame);
     connect(ui->settingsButton, &QPushButton::clicked, this, [this]()
-            { print("Opening settings"); }); // TODO
+            { QMessageBox settingsBox(this);    
+                settingsBox.setWindowTitle("滚木");
+                settingsBox.setText("没做                                              ");
+                settingsBox.exec();
+                print("Opening settings"); }); // TODO
 }
 
 /// @brief UI 初始化：固定窗口尺寸、切到 Logo 场景、搭建战场
@@ -139,7 +145,8 @@ MainWindow::~MainWindow()
 // ============================================================================
 void MainWindow::keyPressEvent(QKeyEvent *event)
 {
-    if (event->key() == Qt::Key_Escape && m_gameManager)
+    if (event->key() == Qt::Key_Escape && m_gameManager &&
+        m_gameManager->getCurrentPhase() == RoundPhase::Combat)
     {
         // 暂停计时器
         m_gameManager->getTickTimer()->stop();
@@ -147,7 +154,7 @@ void MainWindow::keyPressEvent(QKeyEvent *event)
         // 弹出模态暂停对话框
         QMessageBox pauseBox(this);
         pauseBox.setWindowTitle(QStringLiteral("游戏暂停"));
-        pauseBox.setText(QStringLiteral("游戏已暂停"));
+        pauseBox.setText(QStringLiteral("游戏已暂停                                   "));
         pauseBox.setInformativeText(QStringLiteral("点击确定继续游戏"));
         pauseBox.setStandardButtons(QMessageBox::Ok);
         pauseBox.setIcon(QMessageBox::Information);
@@ -673,19 +680,16 @@ void MainWindow::showRoundResult(bool victory)
     const double gpa = m_gameManager->getRoundGpa();
 
     QMessageBox box(this);
-    box.setWindowTitle(QStringLiteral("回合结算"));
+    box.setWindowTitle(QStringLiteral("考试结束！"));
     box.setIcon(victory ? QMessageBox::Information : QMessageBox::Warning);
     box.setText(QString(
-                    "%1\n\n"
+                    "%1\n                                        \n"
                     "获得金币：%2\n"
                     "获得经验：%3\n"
-                    "塔剩余血量：%4 / %5\n"
-                    "本回合学分绩：%6 * %7cr")
-                    .arg(victory ? QStringLiteral("✨ 胜利！") : QStringLiteral("💀 失败..."))
+                    "本回合学分绩：%4 * %5cr")
+                    .arg(victory ? QStringLiteral("我们的身后就是及格线！") : QStringLiteral("明年重修"))
                     .arg(goldEarned)
                     .arg(expEarned)
-                    .arg(towerHp)
-                    .arg(m_gameManager->getMaxTowerHp())
                     .arg(gpa, 0, 'f', 2)
                     .arg(m_gameManager->getRoundInfos()[m_gameManager->getRoundNumber()].creditWorth));
     box.setStandardButtons(QMessageBox::Ok);
@@ -699,9 +703,9 @@ void MainWindow::showRoundResult(bool victory)
 void MainWindow::showGameOver(double finalGpa)
 {
     QMessageBox box(this);
-    box.setWindowTitle(QStringLiteral("游戏结算"));
+    box.setWindowTitle(QStringLiteral("最后一科已考完！"));
     box.setIcon(QMessageBox::Information);
-    box.setText(QString("🎓 本学期结束！\n\nGPA：%1").arg(finalGpa, 0, 'f', 2));
+    box.setText(QString("本学期结束！                                             \n\nGPA：%1").arg(finalGpa, 0, 'f', 2));
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
     switchScene(Scene::EntryMenu);
