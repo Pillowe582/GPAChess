@@ -97,12 +97,12 @@ void ShopWindow::onPurchaseClicked()
     // 检查金币和备战席是否足够
     if (assets.gold < cfg.cost)
     {
-        QMessageBox::warning(this, QStringLiteral("金币不足"), QStringLiteral("你没有足够的金币购买此角色！"));
+        QMessageBox::warning(this, QStringLiteral("金币不足"), QStringLiteral("你没有足够的金币购买此角色！             "));
         return;
     }
     if (assets.benchFull())
     {
-        QMessageBox::warning(this, QStringLiteral("备战席已满"), QStringLiteral("备战席已满，无法购买更多角色！"));
+        QMessageBox::warning(this, QStringLiteral("备战席已满"), QStringLiteral("备战席已满，无法购买更多角色！             "));
         return;
     }
 

@@ -104,6 +104,7 @@ struct SplashPayload
 {
     QString text;
     TextStyle style;
+    QColor shadowColor = Qt::black;
 };
 
 class QGraphicsScene;
@@ -195,6 +196,15 @@ public:
     /// @param color 颜色
     void queueSplash(const QString &text, double x, double y,
                      const QColor &color, int z = 1000);
+
+    /// @brief 排队绘制跳字
+    /// @param text 文本内容
+    /// @param x X坐标
+    /// @param y Y坐标
+    /// @param shadowColor 阴影颜色
+    /// @param color 颜色
+    void queueSplash(const QString &text, double x, double y,
+                     const QColor &color, const QColor &shadowColor, int z = 1000);
 
     const std::vector<QueueItem> &getQueue() const { return m_queue; }
 

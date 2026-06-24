@@ -47,7 +47,8 @@ struct DamageType
         Immune    // < 免疫伤害（不受任何伤害）
     };
     Type type = Physical;
-    QColor color; // < 伤害数字颜色
+    QColor color;                   // < 伤害数字颜色
+    QColor shadowColor = Qt::black; // < 伤害数字阴影颜色
 };
 
 class Attribute

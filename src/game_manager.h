@@ -253,7 +253,7 @@ private:
     bool m_mandatoryEnemiesCleared = false; // 必修敌人是否已清除
 
     // 最大回合数
-    int m_maxRounds = 10;
+    int m_maxRounds = 0;
 
     double m_weightedGpaSum = 0.0; // Σ(学分×学分绩)
     int m_totalCredits = 0;        // 已完成回合的学分之和

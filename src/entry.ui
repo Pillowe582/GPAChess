@@ -51,7 +51,7 @@
        <number>0</number>
       </property>
       <property name="currentIndex">
-       <number>1</number>
+       <number>2</number>
       </property>
       <widget class="QWidget" name="entryLogo">
        <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -231,7 +231,7 @@ border-top-left-radius: 24px;
            </property>
            <property name="font">
             <font>
-             <pointsize>24</pointsize>
+             <pointsize>32</pointsize>
              <bold>true</bold>
             </font>
            </property>
@@ -386,6 +386,24 @@ color:red
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
+          <property name="acceptDrops">
+           <bool>true</bool>
+          </property>
+          <property name="toolTip">
+           <string/>
+          </property>
+          <property name="toolTipDuration">
+           <number>-1</number>
+          </property>
+          <property name="statusTip">
+           <string>11111</string>
+          </property>
+          <property name="accessibleName">
+           <string/>
+          </property>
+          <property name="accessibleDescription">
+           <string/>
+          </property>
           <property name="dragMode">
            <enum>QGraphicsView::DragMode::NoDrag</enum>
           </property>
@@ -419,6 +437,9 @@ color:red
               <pointsize>18</pointsize>
               <bold>true</bold>
              </font>
+            </property>
+            <property name="toolTip">
+             <string>升级可提升最大上场数</string>
             </property>
             <property name="value">
              <number>24</number>

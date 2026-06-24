@@ -50,7 +50,8 @@ void OverwhelmedBroAlly::tick(double dt, BaseEntity &baseSelf, GameManager &game
         EnemyInstance *target = findEnemy(enemies, self, 0);
         if (!target)
             return;
-        double distance = std::sqrt(std::pow(target->transform.x - self.transform.x, 2) + std::pow(target->transform.y - self.transform.y, 2));
+        double distance = std::sqrt(std::pow(target->transform.x - self.transform.x, 2) +
+                                    std::pow(target->transform.y - self.transform.y, 2));
         if (distance > 300) // 目标不在范围内
             return;
         m_teaSpout.x = self.transform.x;
@@ -74,7 +75,8 @@ void OverwhelmedBroAlly::tick(double dt, BaseEntity &baseSelf, GameManager &game
 }
 
 // % 走位
-void OverwhelmedBroAlly::updatePos(double dt, AllyInstance &self, const std::vector<EnemyInstance *> &enemies)
+void OverwhelmedBroAlly::updatePos(double dt, AllyInstance &self,
+                                   const std::vector<EnemyInstance *> &enemies)
 {
     if (m_teaSpout.elapsedTime >= 0)
         return;
@@ -155,7 +157,7 @@ void OverwhelmedBroAlly::updateBullets(double dt, AllyInstance &self, GameManage
             double dy = b.y - enemy->transform.y;
             if (std::sqrt(dx * dx + dy * dy) < 50.0)
             {
-                enemy->dealDamage(b.damage, self, DamageType{DamageType::Physical, QColor("#b93ec0")});
+                enemy->dealDamage(b.damage, self, DamageType{DamageType::Physical, QColor("#f6ff00"), QColor("#a400a7")});
                 if (!enemy->isAlive)
                 {
                     int gold = (rng->bounded(10) == 0) ? enemy->baseGoldReward : 0;
@@ -228,7 +230,8 @@ void OverwhelmedBroAlly::updateTropicalTeaSpout(double dt, AllyInstance &self, G
         gameManager.getRenderer().queueImage(":/texture/projectile/tropical_tea.png",
                                              self.transform.x + 50 * m_targetDirection.x(),
                                              self.transform.y + 50 * m_targetDirection.y(),
-                                             baseRotAngle + 10 * std::sin(8 * M_PI * m_teaSpout.elapsedTime), 0.5, Qt::AlignCenter, 100);
+                                             baseRotAngle + 10 * std::sin(8 * M_PI * m_teaSpout.elapsedTime),
+                                             0.5, Qt::AlignCenter, 100);
         return;
     }
 
@@ -238,7 +241,8 @@ void OverwhelmedBroAlly::updateTropicalTeaSpout(double dt, AllyInstance &self, G
         gameManager.getRenderer().queueImage(":/texture/projectile/tropical_tea_spout.png",
                                              self.transform.x + 50 * m_targetDirection.x(),
                                              self.transform.y + 50 * m_targetDirection.y(),
-                                             baseRotAngle + 90 + 10 * std::sin(2 * M_PI * m_teaSpout.elapsedTime), 5.0, Qt::AlignCenter, 100);
+                                             baseRotAngle + 90 + 10 * std::sin(2 * M_PI * m_teaSpout.elapsedTime),
+                                             5.0, Qt::AlignCenter, 100);
 
         if (m_teaSpout.elapsedTime - 1 > 0.5 * m_teaSpout.hitCount) // 3秒7喷
         {
@@ -254,7 +258,8 @@ void OverwhelmedBroAlly::updateTropicalTeaSpout(double dt, AllyInstance &self, G
                 double dtheta = std::atan2(dy, dx) - baseRotAngle * M_PI / 180.0;
                 if (d < 400.0 && std::abs(dtheta) < M_PI / 12) // 范围：距离400且角度在±15度内
                 {
-                    enemy->dealDamage(m_teaSpout.damage, self, DamageType{DamageType::Physical, QColor("#b93ec0")});
+                    enemy->dealDamage(m_teaSpout.damage, self,
+                                      DamageType{DamageType::Physical, QColor("#f6ff00"), QColor("#a400a7")});
                     if (!enemy->isAlive)
                     {
                         int gold = (QRandomGenerator::global()->bounded(10) == 0) ? enemy->baseGoldReward : 0;

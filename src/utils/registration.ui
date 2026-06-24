@@ -56,7 +56,7 @@
         <number>6</number>
        </property>
        <property name="placeholderText">
-        <string>n ∊ [1,114514]</string>
+        <string>n ∊ [1,1145]</string>
        </property>
       </widget>
      </item>
@@ -71,6 +71,9 @@
    </item>
    <item alignment="Qt::AlignmentFlag::AlignRight">
     <widget class="QPushButton" name="submitCourses">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
        <horstretch>0</horstretch>

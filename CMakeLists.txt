@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
-project(gpachess VERSION 0.1.1)
-set(OUTPUT_NAME "GPAChess")
+project(gpachess VERSION 0.2.1)
+set(OUTPUT_NAME "GPAutoChess")
 
 add_definitions(-DVERSION=${PROJECT_VERSION}) #PROJECT_VERSION 就是指上面 VERSION 后面那个
 
@@ -46,3 +46,19 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/entity"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/utils")
+
+# 打包 Qt 依赖
+find_program(WINDEPLOYQT_EXECUTABLE windeployqt
+    HINTS "${QT6_DIR}/bin"
+          "${QT_DIR}/bin"
+)
+
+if(WINDEPLOYQT_EXECUTABLE)
+    add_custom_command(TARGET gpachess POST_BUILD
+        COMMAND ${WINDEPLOYQT_EXECUTABLE}
+            --no-translations
+            --no-compiler-runtime
+            $<TARGET_FILE:gpachess>
+        COMMENT "Running windeployqt..."
+    )
+endif()

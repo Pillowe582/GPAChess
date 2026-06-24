@@ -47,6 +47,14 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
     initUi();
 
+    // 每5s切换一次提示
+    m_noticeTimer = new QTimer(this);
+    m_noticeTimer->setInterval(5000);
+    m_noticeTimer->start();
+
+    connect(m_noticeTimer, &QTimer::timeout, this, [this]()
+            { setWindowTitle("GPAutoChess - " + getNotice()); });
+
     // —— Logo 播放 ——
     LogoPlayer *logoPlayer = new LogoPlayer(ui->logoDisplayLabel, this);
     connect(logoPlayer, &LogoPlayer::logoPlayFinished, this, [this]()
@@ -94,6 +102,11 @@ void MainWindow::initGame()
     // 创建游戏主控
     m_gameManager = new GameManager(this);
     m_gameManager->showRegistrationWindow(this, m_gameManager); // 进入选课界面
+    if (m_gameManager->getRoundInfos().empty())
+    {
+        print("未选课，无法开始游戏");
+        return;
+    }
     m_gameManager->initialize();
 
     // 创建渲染器并注入
@@ -685,10 +698,10 @@ void MainWindow::showRoundResult(bool victory)
     box.setWindowTitle(QStringLiteral("考试结束！"));
     box.setIcon(victory ? QMessageBox::Information : QMessageBox::Warning);
     box.setText(QString(
-                    "%1\n                                        \n"
+                    "%1\n\n"
                     "获得金币：%2\n"
                     "获得经验：%3\n"
-                    "本回合学分绩：%4 * %5cr")
+                    "本回合学分绩：%4 * %5cr                      ")
                     .arg(victory ? QStringLiteral("我们的身后就是及格线！") : QStringLiteral("明年重修"))
                     .arg(goldEarned)
                     .arg(expEarned)
@@ -711,4 +724,24 @@ void MainWindow::showGameOver(double finalGpa)
     box.setStandardButtons(QMessageBox::Ok);
     box.exec();
     switchScene(Scene::EntryMenu);
+}
+
+// % 显示状态栏提示
+const QString MainWindow::getNotice() const
+{
+    static const QStringList notices = {
+        "对战中按Esc可暂停",
+        "每回合只有第一波生成的敌人为必修，后续的不影响GPA",
+        "敌人会随着回合数增加、选修波次增加而变强",
+        "敌人数量与本课程学分数相关",
+        "每回合固定奖励10金币，敌人会额外随机掉落金币和经验",
+        "金币和经验等在每回合结束时结算",
+        "成绩单会发射激光，对必修敌人造成百分比真伤",
+        "成绩单发射的激光伤害随自身血量下降而上升",
+        "没有Bug，只有特性",
+    };
+    static int index = 0;
+    QString notice = notices[index];
+    index = (index + 1) % notices.size();
+    return notice;
 }

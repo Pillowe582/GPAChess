@@ -9,8 +9,8 @@
 RegistrationWindow::RegistrationWindow(QWidget *parent, GameManager *gm)
     : QDialog(parent), ui(new Ui::registrationWindow), m_gameManager(gm)
 {
-    setVisible(false);
     ui->setupUi(this);
+
     setWindowFlags(Qt::Dialog | Qt::CustomizeWindowHint);
     setWindowModality(Qt::WindowModal);
     m_coursesChanged = false;
@@ -19,7 +19,7 @@ RegistrationWindow::RegistrationWindow(QWidget *parent, GameManager *gm)
     connect(ui->submitCourses, &QPushButton::clicked, this, &RegistrationWindow::onSubmitCoursesClicked);
 
     // 选课数改变
-    QIntValidator *validator = new QIntValidator(1, 114514, this);
+    QIntValidator *validator = new QIntValidator(1, 1145, this);
     ui->roundCountEdit->setValidator(validator);
     connect(ui->roundCountEdit, &QLineEdit::editingFinished, this, [this]()
             {
@@ -27,8 +27,7 @@ RegistrationWindow::RegistrationWindow(QWidget *parent, GameManager *gm)
         int count = ui->roundCountEdit->text().toInt(&ok);
         if (ok)
             onCourseCountChanged(count, *m_gameManager); });
-
-    setVisible(true);
+    updateCourseList();
 }
 
 RegistrationWindow::~RegistrationWindow()
@@ -59,6 +58,8 @@ void RegistrationWindow::onCourseCountChanged(int count, GameManager &gameManage
 void RegistrationWindow::updateCourseList()
 {
     ui->courseList->clear();
+    bool hasCourse = !m_regInfos.empty();
+    ui->submitCourses->setEnabled(hasCourse);
     for (const RegistrationInfo *regInfo : m_regInfos)
     {
         const RoundInfo &info = regInfo->roundInfo;
@@ -112,7 +113,7 @@ void RegistrationWindow::onSubmitCoursesClicked()
         msgBox.setWindowTitle("抽签完成");
         msgBox.setIcon(QMessageBox::Information);
         msgBox.setText("喜报：你掉了 " + QString::number(droppedCourses) + " 门课" +
-                       (droppedCourses == 0 ? "，蓝零王！            " : "          "));
+                       (droppedCourses == 0 ? "，蓝零王！            " : "               "));
         QPushButton *acceptBtn = msgBox.addButton("就这样吧", QMessageBox::AcceptRole);
         QPushButton *retryBtn = msgBox.addButton("重开", QMessageBox::RejectRole);
         msgBox.setDefaultButton(acceptBtn); // 设置默认按钮（按 Enter 触发）

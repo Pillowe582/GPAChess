@@ -306,7 +306,7 @@ void PhysicsEnemy::applyCurlRotation(std::vector<std::unique_ptr<AllyInstance>> 
 {
     const double maxRadius = m_curlField.radius;
     const double baseAngularSpeed = 90.0;
-    const double angleSign = clockwise ? 1.0 : -1.0;
+    const double angleSign = clockwise ? -1.0 : 1.0;
 
     // 旋转单个目标
     auto rotateOne = [&](auto &target)

@@ -129,7 +129,7 @@ double LivingEntity::dealDamage(double rawDamage, BaseEntity &source, DamageType
     {
         gameManager->getRenderer().queueSplash(QString("%1").arg(static_cast<int>(actual)),
                                                transform.x, transform.y - 20,
-                                               type.color);
+                                               type.color, type.shadowColor);
     }
 
     return actual;
@@ -194,7 +194,7 @@ EnemyInstance::EnemyInstance(const EnemyConfig &cfg, bool required, int round,
     maxDef.base = baseDef;
     maxSpeed.base = speed;
     atk.base = baseAtk;
-    // 回合数成长 
+    // 回合数成长
     maxHp.base = static_cast<int>(maxHp.base * (1.0 + (round - 1) * hpGrowthMultiplier));
     atk.base = static_cast<int>(atk.base * (1.0 + (round - 1) * atkGrowthMultiplier));
     currentHp = maxHp.getFinal();

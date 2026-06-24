@@ -55,9 +55,13 @@ private slots:
     void onUnitDragFinished(int uuid, QPointF scenePos);
     /// 打开商店
     void onShopOpenClicked();
+    /// 获取一条随机提示
+    const QString getNotice() const;
 
 private:
     Ui::MainWindow *ui;
+    QTimer *m_noticeTimer = nullptr;
+
     void keyPressEvent(QKeyEvent *event) override;
     void initUi();
     void initGame();

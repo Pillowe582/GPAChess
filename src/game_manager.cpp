@@ -71,7 +71,7 @@ void GameManager::initialize()
         auto towerInst = std::make_unique<AllyInstance>(towerCfg, this);
         towerInst->isTower = true;
         towerInst->deployed = true;
-        towerInst->transform.x = 200.0;
+        towerInst->transform.x = 100.0;
         towerInst->transform.y = 400.0;
         towerInst->behavior.reset(new TowerBehavior());
         m_player.ownedChesses.push_back(std::move(towerInst));
@@ -534,7 +534,6 @@ void GameManager::showRegistrationWindow(MainWindow *mainWindow, GameManager *gm
     {
         m_registrationWindow = new RegistrationWindow(mainWindow, gm);
     }
-
     m_registrationWindow->exec();
 }
 

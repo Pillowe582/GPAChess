@@ -177,7 +177,7 @@ void Renderer::flush()
                            auto *shadow = m_scene->addText(payload.text);
 
                            shadow->setFont(payload.style.font);
-                           shadow->setDefaultTextColor(QColor("#000000").darker(160));
+                           shadow->setDefaultTextColor(payload.shadowColor);
                            shadow->setPos(text->pos() + QPointF(2, 2));
                            shadow->setTransformOriginPoint(shadow->boundingRect().center());
                            shadow->setZValue(item.z - 1);
@@ -299,5 +299,18 @@ void Renderer::queueSplash(const QString &text, double x, double y,
                                      .setColor(color)
                                      .setBold(true)
                                      .setFontSize(18)};
+    m_queue.push_back(q);
+}
+
+void Renderer::queueSplash(const QString &text, double x, double y,
+                           const QColor &color, const QColor &shadowColor, int z)
+{
+    QueueItem q;
+    q.x = x;
+    q.y = y;
+    q.z = z;
+    q.data = SplashPayload{text,
+                           TextStyle().setColor(color).setBold(true).setFontSize(18),
+                           shadowColor};
     m_queue.push_back(q);
 }

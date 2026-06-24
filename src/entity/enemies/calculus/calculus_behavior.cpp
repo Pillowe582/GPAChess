@@ -11,7 +11,6 @@ void CalculusEnemy::onStart(EnemyInstance &self)
 {
     m_weapon.reset();
     m_differential.reset();
-    m_differentialPen = QPen(QColor("#00bd94") ^ 1, 4.0);
 
     int spd = self.baseAttackSpeed;
     m_cooldown = spd > 0 ? (1.0 / spd) : 1.0;
@@ -52,7 +51,6 @@ void CalculusEnemy::tick(double dt, BaseEntity &baseSelf, GameManager &gameManag
     // 3. MP 满 → 发动大招
     if (self.currentMp >= self.maxMp)
     {
-        m_differentialPen.setColor(QColor("#00bd94") ^ 1);
         m_differential.reset();
         findInfSupAlly(allies, self, m_differential.infX, m_differential.supX);
         m_differential.active = true;
@@ -274,8 +272,8 @@ void CalculusEnemy::updateDifferential(double dt, const std::vector<std::unique_
                 double x = target->transform.x;
                 if (std::abs(x - linePos) < 32)
                 {
-                    int dmg = m_differential.damage / (totalLines - 1);
-                    target->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00bd94")});
+                    int dmg = m_differential.damage * 2 / (totalLines - 1); // 每轮总倍率200%
+                    target->dealDamage(dmg, self, DamageType{DamageType::Physical, QColor("#00e4b2")});
                 }
             }
 
@@ -286,12 +284,7 @@ void CalculusEnemy::updateDifferential(double dt, const std::vector<std::unique_
     // 渲染活跃线条
     for (const auto &ln : active)
     {
-        // 可选：淡出效果
-        double age = now - ln.bornTime;
-        double alpha = 1.0 - (age / lineDuration);
-        QColor color = m_differentialPen.color();
-        color.setAlpha(static_cast<int>(255 * alpha));
-        QPen pen(color, m_differentialPen.width());
+        QPen pen(QColor("#00bd94"), 5);
 
         renderer.queueLine(ln.x, 0, ln.x, 1080, pen, 90);
     }
