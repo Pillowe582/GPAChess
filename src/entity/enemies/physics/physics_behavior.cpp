@@ -182,7 +182,7 @@ void PhysicsEnemy::dealElectricDamage(std::vector<std::unique_ptr<AllyInstance>>
             continue;
         double dx = ally->transform.x - centerX;
         double dy = ally->transform.y - centerY;
-        if (dx * dx + dy * dy < radius * radius)
+        if ((dx * dx + dy * dy < radius * radius) && ally)
         {
             ally->dealDamage(baseDamage, self,
                              DamageType{DamageType::Physical, QColor("#4488ff")});

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(gpachess VERSION 0.2.1)
+project(gpachess VERSION 0.2.2)
 set(OUTPUT_NAME "GPAutoChess")
 
 add_definitions(-DVERSION=${PROJECT_VERSION}) #PROJECT_VERSION 就是指上面 VERSION 后面那个

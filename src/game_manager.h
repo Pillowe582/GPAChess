@@ -62,6 +62,8 @@ public:
     void nextRound();
 
     // % Getters
+
+    bool isCourseRegistered() const { return m_courseRegistered; }
     RoundPhase getCurrentPhase() const { return m_phase; }
     int getRoundNumber() const { return m_roundNumber; }
     int getTowerHp() const;
@@ -96,6 +98,8 @@ public:
 
     QTimer *getTickTimer() const { return m_tickTimer; }
     quint32 gameSeed() const { return m_gameSeed; }
+
+    void setCourseRegistered(bool registered) { m_courseRegistered = registered; }
 
     // % 工具方法
     /// 限制实体位置在画布内（保留 margin 边距）
@@ -229,6 +233,7 @@ private:
 private:
     QTimer *m_tickTimer;
     int m_roundNumber;
+    bool m_courseRegistered = false;
 
     // 当前回合阶段
     RoundPhase m_phase;

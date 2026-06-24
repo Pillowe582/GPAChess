@@ -140,7 +140,8 @@ void GameManager::startRound(int roundNumber)
 {
     m_roundNumber = roundNumber;
 
-    m_tower->baseHp = BASE_TOWER_HP * roundNumber; // 塔生命随回合增加
+    m_tower->baseHp = BASE_TOWER_HP * 50 * roundNumber; // 塔生命随回合增加
+    m_tower->baseDef = 100 * roundNumber;
     // 快照回合开始时的金币/经验
     m_roundStartGold = m_player.gold;
     m_roundStartExp = m_player.exp;
@@ -295,8 +296,8 @@ std::vector<EnemyConfig> GameManager::pickRandomEnemies(int roundNumber, int cou
     {
         int idx = m_rng.bounded(static_cast<int>(pool.size()));
         EnemyConfig cfg = pool[idx];
-        cfg.baseHp += roundNumber * cfg.hpGrowthMultiplier;
-        cfg.baseAtk += roundNumber * cfg.atkGrowthMultiplier;
+        cfg.baseHp *= std::pow(cfg.hpGrowthMultiplier, roundNumber - 1);
+        cfg.baseAtk *= std::pow(cfg.atkGrowthMultiplier, roundNumber - 1);
         result.push_back(cfg);
     }
     return result;

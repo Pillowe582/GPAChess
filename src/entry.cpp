@@ -101,9 +101,11 @@ void MainWindow::initGame()
 
     // 创建游戏主控
     m_gameManager = new GameManager(this);
+    m_gameManager->setCourseRegistered(false);
     m_gameManager->showRegistrationWindow(this, m_gameManager); // 进入选课界面
-    if (m_gameManager->getRoundInfos().empty())
+    if (m_gameManager->getRoundInfos().empty() || !m_gameManager->isCourseRegistered())
     {
+
         print("未选课，无法开始游戏");
         return;
     }

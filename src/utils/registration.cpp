@@ -123,6 +123,7 @@ void RegistrationWindow::onSubmitCoursesClicked()
             // 就这样吧
             print("掉了就掉了吧");
             deleteDroppedCourses(m_gameManager->getRoundInfos(), m_gameManager->getMaxRounds());
+            m_gameManager->setCourseRegistered(true);
             this->close();
         }
     }
@@ -138,6 +139,7 @@ void RegistrationWindow::onSubmitCoursesClicked()
         {
             print("开学！");
             deleteDroppedCourses(m_gameManager->getRoundInfos(), m_gameManager->getMaxRounds());
+            m_gameManager->setCourseRegistered(true);
             this->close();
         }
     }
@@ -158,6 +160,7 @@ void RegistrationWindow::deleteDroppedCourses(std::vector<RoundInfo> &roundInfos
             newRoundInfos.back().roundNumber = roundCount; // 重新编号
         }
     }
+
     roundInfos = newRoundInfos;
     maxRounds = roundCount;
 }
