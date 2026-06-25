@@ -1,5 +1,6 @@
 #include "overwhelmed_bro_behavior.h"
 #include "state.h"
+#include "print.h"
 #include "renderer.h"
 #include "game_manager.h"
 #include <cmath>
@@ -30,6 +31,8 @@ void OverwhelmedBroAlly::tick(double dt, BaseEntity &baseSelf, GameManager &game
     Renderer &renderer = gameManager.getRenderer();
 
     updatePos(dt, self, enemies);
+
+    m_maxCooldown = self.baseAttackSpeed > 0 ? (2.0 / self.baseAttackSpeed) : 2.0;
 
     // 1. 推进已有子弹并检测碰撞
     updateBullets(dt, self, gameManager);

@@ -404,11 +404,15 @@ void GameManager::tickBehaviors(double deltaSeconds)
     if (!m_renderer)
         return;
 
-    // ═══════ 逻辑 Phase ═══════
-    // Ally (含塔 —— 塔就是 isTower=true 的普通 ally)
+    // Ally
+    m_gameEntities.allies.clear();
     for (auto &ally : m_player.ownedChesses)
-        if (ally->isAlive && ally->deployed && ally->behavior)
-            ally->behavior->tick(deltaSeconds, *ally, *this);
+        if (ally->isAlive && ally->deployed)
+        {
+            m_gameEntities.allies.push_back(ally.get());
+            if (ally->behavior)
+                ally->behavior->tick(deltaSeconds, *ally, *this);
+        }
 
     // Enemy
     for (auto &enemy : m_gameEntities.enemies)

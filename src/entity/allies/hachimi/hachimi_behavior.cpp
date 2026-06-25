@@ -1,5 +1,6 @@
 #include "hachimi_behavior.h"
 #include "state.h"
+#include "print.h"
 #include "renderer.h"
 #include "game_manager.h"
 #include <cmath>
@@ -34,6 +35,7 @@ void HachimiAlly::switchState(HachimiState::State newState)
 // % 每刻逻辑
 void HachimiAlly::tick(double dt, BaseEntity &baseSelf, GameManager &gameManager)
 {
+    m_gameManager = &gameManager; // 保存游戏管理器引用
     AllyInstance &self = static_cast<AllyInstance &>(baseSelf);
     auto &enemies = gameManager.getGameEntities().enemies;
     Renderer &renderer = gameManager.getRenderer();
@@ -189,6 +191,27 @@ void HachimiAlly::performHaAttack(AllyInstance &self, GameManager &gameManager)
             }
         }
     }
+}
+
+// % 亡语
+void HachimiAlly::onDeath(AllyInstance *self)
+{
+    print("哈基米坠机，触发亡语");
+    // 处理哈基米死亡时的逻辑
+    for (auto *ally : m_gameManager->getGameEntities().allies)
+    {
+        if (ally && ally->isAlive)
+        {
+            // 给其他角色加buff
+            ally->baseAttackSpeed *= 2; // 加攻速
+            QTimer::singleShot(3000, [ally]()
+                               {
+                                   if (ally && ally->isAlive)
+                                       ally->baseAttackSpeed /= 2; // 30秒后恢复
+                               });
+        }
+    }
+    print(QString("allies 数量: %1").arg(m_gameManager->getGameEntities().allies.size()));
 }
 
 // % 走位

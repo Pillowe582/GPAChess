@@ -189,6 +189,7 @@ public:
     void resetStatus();
 
     virtual double dealDamage(double rawDamage, BaseEntity &source, DamageType type) override;
+    virtual void setDeath() override;
 };
 
 class EnemyInstance : public EnemyConfig, public LivingEntity

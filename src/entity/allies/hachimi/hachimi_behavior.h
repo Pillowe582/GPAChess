@@ -39,8 +39,9 @@ public:
     };
 
 private:
-    double m_lastRecordedHp = 0.0;   // 上次记录的HP，用于检测是否被攻击
-    double m_lastNotHurtTimer = 0.0; // 记录上次被攻击的时间，用于触发MP增加
+    double m_lastRecordedHp = 0.0;        // 上次记录的HP，用于检测是否被攻击
+    double m_lastNotHurtTimer = 0.0;      // 记录上次被攻击的时间，用于触发MP增加
+    GameManager *m_gameManager = nullptr; // 游戏管理器引用
 
     HachimiState m_state; // 角色状态
     double m_cooldown = 0.0;
@@ -63,6 +64,9 @@ private:
 
     // 攻击
     void performHaAttack(AllyInstance &self, GameManager &gameManager);
+
+    // 亡语
+    void onDeath(AllyInstance *self) override;
 };
 
 #endif

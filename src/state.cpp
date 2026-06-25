@@ -136,7 +136,7 @@ double LivingEntity::dealDamage(double rawDamage, BaseEntity &source, DamageType
 }
 
 // ============================================================================
-// % ChessInstance 实现
+// %AllyInstance 实现
 // ============================================================================
 
 AllyInstance::AllyInstance(const AllyConfig &cfg, GameManager *mgr)
@@ -179,6 +179,13 @@ double AllyInstance::dealDamage(double rawDamage, BaseEntity &source, DamageType
     }
 
     return LivingEntity::dealDamage(rawDamage, source, type);
+}
+
+void AllyInstance::setDeath()
+{
+    LivingEntity::setDeath();
+    if (behavior)
+        behavior->onDeath(this);
 }
 
 // ============================================================================

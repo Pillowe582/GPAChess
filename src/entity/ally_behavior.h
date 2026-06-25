@@ -32,6 +32,8 @@ public:
     /// @param self 棋子实例
     /// @return 材质路径
     virtual QString getTexturePath(const AllyInstance &self) const;
+
+    virtual void onDeath(AllyInstance *self) {};
 };
 
 AllyBehavior *createAllyBehavior(int behaviorId);
